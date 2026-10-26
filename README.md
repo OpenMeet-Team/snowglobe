@@ -1,4 +1,4 @@
-# Snowglobe
+# <img src="assets/snowglobe.svg" width="40" alt=""> Snowglobe
 
 Your own isolated [AT Protocol](https://atproto.com) network, for testing, research, and demos. A snowglobe has its own
 PDS, PLC directory and Jetstream (and a relay, once there is more than one PDS), and nothing in it reaches Bluesky's network. It uses
