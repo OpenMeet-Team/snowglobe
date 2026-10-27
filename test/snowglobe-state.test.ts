@@ -1,6 +1,7 @@
-// Where a snowglobe's state is and which file owns it (lib/state.mjs, lib/env.mjs): the state
-// folder per user, the file found from the folder you are in, the compose project from its name,
-// the refusal of a second file with the same name, and the notice for a checkout's old data/.
+// Where a snowglobe's state is and which file last brought it up (lib/state.mjs, lib/env.mjs): the
+// state folder per user, the file found from the folder you are in, the compose project from its
+// name, a second file with the same name taking it over (and what it says), and the notice for a
+// checkout's old data/.
 // No Docker needed: the CLI runs on a copy of bin/ and lib/ in a temporary root, with a docker on
 // PATH that only records what it was asked. Run them alone with `npx vitest run snowglobe-state`.
 import { describe, it, expect } from 'vitest';
@@ -245,6 +246,56 @@ describe('a snowglobe is found from the folder you are in', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain(join(r, 'one/snowglobe.yml'));
     expect(lines[0]).toContain(join(r, 'two/snowglobe.yml'));
+  });
+
+  it('keeps the record, and says nothing, when a second file\'s up or render is refused', () => {
+    const r = box();
+    for (const d of ['one', 'two', 'three']) mkdirSync(join(r, d));
+    cpSync(FOUR, join(r, 'one/snowglobe.yml'));
+    // two's app claims the ending one's route holds; three's group host has nowhere to get an image.
+    writeFileSync(join(r, 'two/snowglobe.yml'), `${readFileSync(FOUR, 'utf8')}apps:\n  - { name: x, local: { port: 4001, handles: hh } }\n`);
+    writeFileSync(join(r, 'three/snowglobe.yml'), `${readFileSync(FOUR, 'utf8')}grouphosts:\n  - { name: gh, kind: opensocial }\n`);
+    expect(sg(r, join(r, 'one'), ['render']).status).toBe(0);
+    expect(sg(r, join(r, 'one'), ['app', 'other', '4000', 'hh']).status).toBe(0);
+    for (const [dir, cmd] of [['two', 'up'], ['three', 'render']]) {
+      const res = sg(r, join(r, dir), [cmd]);
+      expect(res.status, `${dir} ${cmd}`).not.toBe(0);
+      expect(res.stderr).not.toContain('was last brought up from');
+      expect(readFileSync(join(r, '.local/share/snowglobe/four/owner'), 'utf8')).toContain(join(r, 'one'));
+    }
+  });
+
+  it('warns once when env reads a file that differs from what the last up rendered, and not for the same globe', () => {
+    const r = box();
+    for (const d of ['one', 'two', 'three']) mkdirSync(join(r, d));
+    cpSync(FOUR, join(r, 'one/snowglobe.yml'));
+    const other = readFileSync(FOUR, 'utf8').replace('domain: four.test', 'domain: other.test').replace(/^ {2}- \{ name: beta,.*\n/m, '');
+    writeFileSync(join(r, 'two/snowglobe.yml'), other);
+    writeFileSync(join(r, 'three/snowglobe.yml'), other);
+    expect(sg(r, join(r, 'one'), ['render']).status).toBe(0);
+    expect(sg(r, join(r, 'two'), ['render']).status).toBe(0);
+    const warned = (dir: string) => sg(r, join(r, dir), ['env']).stderr.split('\n').filter((l) => l.includes('differs from the snowglobe four'));
+    const lines = warned('one');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain(join(r, 'two/snowglobe.yml'));
+    expect(lines[0]).toContain('other.test');
+    expect(lines[0]).toContain('alpha regular prod');
+    // The file that rendered it, and a copy of it elsewhere (a second worktree), are the running globe.
+    expect(warned('two')).toEqual([]);
+    expect(warned('three')).toEqual([]);
+  });
+
+  it('warns when an account of the file is kept under another handle', () => {
+    const r = box();
+    mkdirSync(join(r, 'one'));
+    writeFileSync(join(r, 'one/snowglobe.yml'), readFileSync(FOUR, 'utf8').replace('accounts: [alice@alpha, bob@alpha]', 'accounts: [alice@alpha, bob@alpha, carol@alpha]'));
+    expect(sg(r, join(r, 'one'), ['render']).status).toBe(0);
+    expect(sg(r, join(r, 'one'), ['env']).stderr).not.toContain('differs from the snowglobe four');
+    // As another file's carol@beta keeps it, once beta is the seed PDS there.
+    writeFileSync(join(r, '.local/share/snowglobe/four/accounts.env'), 'CAROL_HANDLE=carol.beta.four.test\nCAROL_DID=did:plc:carolonbeta\n');
+    const lines = sg(r, join(r, 'one'), ['env']).stderr.split('\n').filter((l) => l.includes('differs from the snowglobe four'));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('carol.beta.four.test');
   });
 
   it('refuses a bare up with no snowglobe.yml here or above, starts nothing, and says how to use the default', () => {

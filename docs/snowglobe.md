@@ -202,7 +202,10 @@ snowglobes' folders is `ca/`, your one certificate authority, which they all use
 names the Docker Compose project, unless `SG_PROJECT` is set. The name is the snowglobe: every file
 that says the same `globe:` is the same one, so two worktrees or clones of an app share it. `up` from
 either brings it up as that file says, and the last `up` decides what it runs; it says so when another
-file brought it up before. To keep two apart, give them different names. The state folder remembers
+file brought it up before, and an `up` that is refused changes nothing. `env` and `run` read their
+own file, so when it differs from what the last `up` rendered (another domain, other PDSs, an account
+under another handle) they say so in one line: the settings they hand over are that file's, not the
+running globe's. To keep two apart, give them different names. The state folder remembers
 the file that last brought it up. `snowglobe ls` lists them, and `up` and `down` take one by its name
 from any folder; `down` works even when that file is gone, `up` needs a file (`up -f <file>`).
 The name is the file's `globe:` line, so `up <name>` finds the file that last brought it up. If you have since

@@ -6,10 +6,14 @@ Changes to the default stack that existing setups will notice:
 
 - **Every file with the same `globe:` name is the same snowglobe.** A second file that named a
   snowglobe, such as the same `snowglobe.yml` in a second worktree or clone of an app, was refused by
-  every command, `run` and `env` included, until the first file's record was deleted by hand. Now any
-  file that says the name uses that snowglobe, and the last `up` (or `render`) decides what it runs,
-  with one line saying so when another file brought it up before. Two files that should not share a
-  snowglobe need different names.
+  every command that reads the file (`up`, `down`, `render`, `run`, `env`, `account`, `app`,
+  `invite`, `lexicons` and `certs`) until the first file's record was deleted by hand. Now any file
+  that says the name uses that snowglobe, and the last `up` (or `render`) that succeeds decides what
+  it runs, with one line saying so when another file brought it up before; a refused one changes
+  nothing. `env` and `run` say in one line when their file differs from what that last `up`
+  rendered (another domain, other PDSs, or an account kept under another handle), since the
+  settings they hand over are then the file's and not the running globe's. Two files that should
+  not share a snowglobe need different names.
 
 ## v0.3.0 (2026-10-24)
 
