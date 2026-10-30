@@ -56,7 +56,7 @@ tools to make its own ([Your app in a snowglobe](your-app.md)), and using them i
 
 `https://local.snowglobe.at/` is the network's own page (`page/index.html`): every service and its
 health, every account on each PDS, the apps `snowglobe app` routed, and the network's writes
-from Jetstream, the last 24 hours (Jetstream's default event TTL), then live. nginx serves it with this snowglobe's relays (`stack/page/snowglobe.conf`), a fixed GET-only path per read, so the page
+from Jetstream, the last 24 hours, then live. nginx serves it with this snowglobe's relays (`stack/page/snowglobe.conf`), a fixed GET-only path per read, so the page
 asks nothing but `local.snowglobe.at`. `snowglobe up` and `snowglobe app` write what it lists into
 `<state>/https/nginx/snowglobe.json`. Open it from a browser set up as in [From a browser on your own
 computer](browser.md#from-a-browser-on-your-own-computer), or read the facts it shows from a script: `snowglobe run curl -s --cacert ~/.local/share/snowglobe/ca/ca.crt https://local.snowglobe.at/snowglobe.json`
@@ -107,7 +107,7 @@ grouphosts:                      # optional; each is grouphost-<name> at https:/
     build: ../atproto-group-host # a folder with a Dockerfile, from this file's folder; or image:
 
 services:                        # each true or false; these are the defaults
-  relay: auto                    # auto: on when there is more than one PDS
+  relay: auto                    # auto: on with Jetstream, which reads it, or more than one PDS
   jetstream: true
   tap: false                     # off by default. true, or a map for an app that takes events from it:
                                  #   tap: { webhook: ${apps.myapp.url}/api/webhook, signal_collection: com.example.thing }

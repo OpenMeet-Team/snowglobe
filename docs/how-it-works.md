@@ -22,7 +22,14 @@
   that collection's repos is refused by the PDS (HTTP 401), so a repo written before Tap started is
   found when it next writes, and then its whole repo is fetched (measured 2026-10-23 with the Tap image
   this snowglobe pins: digest `sha256:5e20bfe4…`, indigo revision `4f47add4`, built 2026-03-11).
-- **Jetstream** is at `ws://127.0.0.1:<SG_JETSTREAM_PORT>`, reading the relay over the Docker network (or, with one PDS, that PDS).
+- **Jetstream** is at `ws://127.0.0.1:<SG_JETSTREAM_PORT>`, reading the relay over the Docker network, so the relay
+  runs even with one PDS: at start Jetstream asks the relay for the network's hosts, which a PDS refuses. It is
+  Jetstream v2. It serves `/xrpc/network.bsky.jetstream.subscribeEvents`, which `@bsky/jetstream` clients such as
+  contrail read, and the older `/subscribe`, which Slingshot, PDSls and the network page read. Its image is built from
+  `stack/jetstream/Dockerfile`, the pinned Jetstream plus busybox for the health check; to move to another
+  Jetstream, change the `FROM` line there, and `snowglobe up` builds it. A new snowglobe's first `up` waits about 90 seconds
+  for it: Jetstream's first start tries to backfill each PDS directly, its HTTP client refuses the private addresses
+  the PDSes have in Docker, and it then follows the relay. Later starts are ready in seconds.
 
 ## Slingshot: handles and DIDs inside the network
 

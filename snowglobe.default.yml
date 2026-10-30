@@ -14,8 +14,8 @@ pds:
   - name: main                 # https://main.local.snowglobe.at
     image: ghcr.io/bluesky-social/pds:0.4.5037    # a current release
     bare_handles: true         # its handles are <account>.local.snowglobe.at
-  # A second PDS, with handles <name>.other.local.snowglobe.at. With more than one PDS the
-  # relay turns on, so Jetstream sees every PDS's writes.
+  # A second PDS, with handles <name>.other.local.snowglobe.at. The relay crawls it too, so
+  # Jetstream sees its writes.
   # - name: other
   #   image: ghcr.io/bluesky-social/pds:0.4.5009
   #
@@ -30,7 +30,7 @@ services:                      # these are the defaults, each true or false
   slingshot: true              # answers a handle's DID and PDS inside the network; needs jetstream
   pdsls: true                  # https://pdsls.local.snowglobe.at, a browser for the network's records
   tap: false                   # sends an app the events of one collection (true, or a map; see snowglobe.md above)
-  # relay: auto                # auto: on when there is more than one PDS
+  # relay: auto                # auto: on with Jetstream, which reads it, or more than one PDS
 
 # Where every PDS resolves lexicons (NSIDs) from. Name a PDS that is in this file.
 # lexicons:

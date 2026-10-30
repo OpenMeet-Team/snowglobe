@@ -1,7 +1,7 @@
 # <img src="assets/snowglobe.svg" width="40" alt=""> Snowglobe
 
 Your own isolated [AT Protocol](https://atproto.com) network, for testing, research, and demos. A snowglobe has its own
-PDS, PLC directory and Jetstream (and a relay, once there is more than one PDS), and nothing in it reaches Bluesky's network. It uses
+PDS, PLC directory, relay and Jetstream, and nothing in it reaches Bluesky's network. It uses
 https and the real network's sign-in (OAuth), so an app built for the real network runs against it
 with no test-only code.
 

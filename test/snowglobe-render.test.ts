@@ -44,12 +44,15 @@ const THREE = { globe: 'mine', domain: 'mine.test', pds: [PDS('alpha', { bare_ha
 const FOUR = { ...THREE, pds: [...THREE.pds, PDS('beta')] };
 
 describe('snowglobe render', () => {
-  it('renders the default globe as one PDS, the PLC, Jetstream, Slingshot and PDSls, with no relay', () => {
+  it('renders the default globe as one PDS, the PLC, the relay Jetstream reads, Jetstream, Slingshot and PDSls', () => {
     const { globe, errors } = loadGlobe(join(ROOT, 'snowglobe.default.yml'));
     expect(errors).toEqual([]);
     const compose = renderGlobe(globe, base, { stateDir: STATE })['compose.yml'];
-    for (const name of ['pds-main:', 'plc:', 'jetstream:', 'slingshot:', 'pdsls:', 'nginx:']) expect(compose).toContain(`\n  ${name}`);
-    for (const name of ['relay:', 'pds-alpha:']) expect(compose).not.toContain(`\n  ${name}`);
+    for (const name of ['pds-main:', 'plc:', 'relay:', 'jetstream:', 'slingshot:', 'pdsls:', 'nginx:']) expect(compose).toContain(`\n  ${name}`);
+    expect(compose).not.toContain('\n  pds-alpha:');
+    const jetstream = parse(compose).services.jetstream;
+    expect(jetstream.environment.JETSTREAM_RELAY_URL).toBe('http://relay:2470');
+    expect(jetstream.image).toBe(base.tags['snowglobe-jetstream']);
   });
 
   it('writes the atmo example globe as test/snowglobe/rendered/ has it', () => {
@@ -116,7 +119,7 @@ describe('snowglobe render', () => {
     const names = FOUR.pds.map((p) => `${p.name}.mine.test`);
     expect(compose.services['relay-init'].environment.RELAY_HOSTS.split(' ')).toEqual(names);
     expect(compose.services.nginx.networks["snowglobe"].aliases).toEqual(names);
-    expect(compose.services.jetstream.environment.JETSTREAM_WS_URL).toBe('ws://relay:2470/xrpc/com.atproto.sync.subscribeRepos');
+    expect(compose.services.jetstream.environment.JETSTREAM_RELAY_URL).toBe('http://relay:2470');
     expect(compose.services.tap.environment.TAP_RELAY_URL).toBe('http://relay:2470');
   });
 
@@ -161,11 +164,21 @@ describe('snowglobe render', () => {
     expect(first.env.SG_SEED_PDS).toBe('regular');
   });
 
-  it('runs no relay for one PDS, and Jetstream and TAP read that PDS', () => {
-    const { compose, files, env } = render({ globe: 'one', domain: 'one.test', pds: [PDS('solo')], services: { tap: true } });
+  it('runs the relay for one PDS when Jetstream is on, since Jetstream reads a relay', () => {
+    const { compose, env } = render({ globe: 'one', domain: 'one.test', pds: [PDS('solo')], services: { tap: true } });
+    expect(compose.services).toHaveProperty('relay');
+    expect(compose.services.jetstream.environment.JETSTREAM_RELAY_URL).toBe('http://relay:2470');
+    expect(compose.services.jetstream.depends_on).toEqual({ relay: { condition: 'service_healthy' } });
+    expect(compose.services.tap.environment.TAP_RELAY_URL).toBe('http://relay:2470');
+    expect(env.SG_ONESHOTS).toBe('init relay-init');
+  });
+
+  it('runs no relay for one PDS without Jetstream, and TAP reads that PDS', () => {
+    const { compose, files, env } = render({
+      globe: 'one', domain: 'one.test', pds: [PDS('solo')], services: { tap: true, jetstream: false, slingshot: false },
+    });
     expect(compose.services).not.toHaveProperty('relay');
     expect(compose.services).not.toHaveProperty('relay-init');
-    expect(compose.services.jetstream.environment.JETSTREAM_WS_URL).toBe('ws://pds-solo:3000/xrpc/com.atproto.sync.subscribeRepos');
     expect(compose.services.tap.environment.TAP_RELAY_URL).toBe('http://pds-solo:3000');
     expect(files['nginx/globe.conf']).not.toContain('relay.one.test');
     expect(env.SG_ONESHOTS).toBe('init');
@@ -186,7 +199,7 @@ describe('snowglobe render', () => {
   it("names on the page only what the globe runs, and gives it no feed without Jetstream", () => {
     const page = (doc: object) => JSON.parse(render(doc).files['page.json']);
     const one = page({ globe: 'one', domain: 'one.test', pds: [PDS('solo')] });
-    expect(one.about).toContain('its own PDS, PLC directory and Jetstream.');
+    expect(one.about).toContain('its own PDS, PLC directory, relay and Jetstream.');
     expect(one.feed).toBe('/subscribe');
     expect(page({ ...THREE, services: { relay: true } }).about).toContain('its own PDSs, PLC directory, relay and Jetstream.');
     const quiet = page({ globe: 'one', domain: 'one.test', pds: [PDS('solo')], services: { jetstream: false, slingshot: false } });

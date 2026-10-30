@@ -95,7 +95,7 @@ describe('the names are checked with the file', () => {
   });
 
   it('says a service the file turns off is off', () => {
-    expect(errorsOf({ R: '${services.relay.url}' }, { pds: [PDS_A], services: { relay: false } })).toEqual([
+    expect(errorsOf({ R: '${services.relay.url}' }, { pds: [PDS_A], services: { relay: false, jetstream: false, slingshot: false } })).toEqual([
       'apps[0].env.R: services.relay is off in this file, so it has no address',
     ]);
     expect(errorsOf({ R: '${services.jetstream.ws}' }, { services: { jetstream: false, slingshot: false } })[0]).toContain('services.jetstream is off');

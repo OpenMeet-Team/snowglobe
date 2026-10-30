@@ -98,17 +98,21 @@ services:
       timeout: 3s
       retries: 10
 
-  # ── Jetstream (JSON event stream from PDS firehose) ──────────────
+  # ── Jetstream (JSON event stream from the relay's firehose) ──────
+  # Built from stack/jetstream: the pinned Jetstream, plus busybox for the health check. It reads
+  # a relay, not a PDS: at start it asks the relay for the network's hosts, which a PDS refuses.
   jetstream:
-    image: ghcr.io/bluesky-social/jetstream:sha-05c89f0
+    build: ./jetstream
+    image: snowglobe-jetstream
     restart: unless-stopped
-    depends_on:
-      pds:
-        condition: service_healthy
     environment:
-      JETSTREAM_WS_URL: ws://pds:3000/xrpc/com.atproto.sync.subscribeRepos
-      JETSTREAM_DATA_DIR: /data
-      JETSTREAM_LIVENESS_TTL: 86400s
+      JETSTREAM_RELAY_URL: http://relay:2470
+      JETSTREAM_PLC_URL: http://plc:2582
+      # A folder of its own: a volume from an older snowglobe holds the older Jetstream's files.
+      JETSTREAM_DATA_DIR: /data/v2
+      JETSTREAM_ADDR: ":6008"
+      # Metrics, and /readyz for the health check.
+      JETSTREAM_DEBUG_ADDR: ":6009"
     volumes:
       - jetstream-data:/data
     ports:
@@ -117,10 +121,12 @@ services:
     networks:
       - atproto-devnet
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/6008'"]
+      test: ["CMD", "/busybox", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:6009/readyz"]
       interval: 5s
       timeout: 3s
       retries: 10
+      # Ready after its first backfill, which asks every PDS for its repos.
+      start_period: 120s
 
   # ── TAP (repo sync + backfill) ───────────────────────────────────
   tap:

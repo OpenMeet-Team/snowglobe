@@ -180,7 +180,7 @@ The names follow the file: the section, the name you gave it, then the field. Ev
 | `grouphosts.<name>.url` `.host` `.did` | the same, for a group host |
 | `apps.<name>.url` `.host` | `https://<name>.app.<domain>` |
 | `services.plc.url` | `https://plc.<domain>` |
-| `services.relay` `.jetstream` `.url` `.ws` | `https://relay.<domain>`, `wss://relay.<domain>`; Jetstream's `.ws` ends in `/subscribe` |
+| `services.relay` `.jetstream` `.url` `.ws` | `https://relay.<domain>`, `wss://relay.<domain>`; Jetstream's `.ws` ends in `/subscribe`, the older protocol, and a Jetstream v2 client such as contrail takes `.url` |
 | `services.slingshot.url`, `services.pdsls.url` | `https://slingshot.<domain>`, `https://pdsls.<domain>` |
 | `accounts.<name>.handle` `.pds` | the handle, and its PDS's url |
 | `lexicons.authority.handle` | the authority account's handle |

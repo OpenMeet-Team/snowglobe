@@ -148,7 +148,7 @@ describe('renamedDefaultNotice', () => {
 // fails, and HOME (so the state) inside it.
 function box() {
   const r = mkdtempSync(join(tmpdir(), 'snowglobe-box-'));
-  for (const d of ['bin', 'lib', 'stack/https/dns', 'stack/https/proxy', 'stack/pdsls']) cpSync(join(ROOT, d), join(r, d), { recursive: true });
+  for (const d of ['bin', 'lib', 'stack/https/dns', 'stack/https/proxy', 'stack/pdsls', 'stack/jetstream']) cpSync(join(ROOT, d), join(r, d), { recursive: true });
   symlinkSync(join(ROOT, 'node_modules'), join(r, 'node_modules'));
   writeFileSync(join(r, 'package.json'), '{"type": "module"}\n');
   for (const f of ['docker-compose.yml', 'docker-compose.test.yml', 'docker-compose.relay.yml', 'init/init.sh']) { mkdirSync(dirname(join(r, 'stack', f)), { recursive: true }); cpSync(join(ROOT, 'stack', f), join(r, 'stack', f)); }

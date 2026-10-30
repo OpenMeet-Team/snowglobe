@@ -94,7 +94,7 @@ describe('the rules behind the check', () => {
     expect(globe.domain).toBe('local.snowglobe.at');
     expect(globe.pds[0].image).toContain('@sha256:');
     expect(globe.pds[0].invites).toBe('open');
-    expect(globe.services.relay).toBe(false); // one PDS: Jetstream follows it directly
+    expect(globe.services.relay).toBe(true); // one PDS, but Jetstream reads a relay
     expect(globe.lexicons.authority).toBe('alpha');
   });
 
@@ -126,6 +126,12 @@ describe('the rules behind the check', () => {
   it('turns the relay on with more than one PDS, and refuses it off', () => {
     expect(checkGlobe({ globe: 'mine', pds: [PDS_A, PDS_B] }).globe.services.relay).toBe(true);
     expect(whereOf({ globe: 'mine', pds: [PDS_A, PDS_B], services: { relay: false } })).toEqual(['services.relay']);
+  });
+
+  it('runs Jetstream only with the relay, and the relay without Jetstream only when asked', () => {
+    expect(whereOf(ok({ services: { relay: false } }))).toEqual(['services.jetstream']);
+    expect(whereOf(ok({ services: { relay: false, jetstream: false, slingshot: false } }))).toEqual([]);
+    expect(checkGlobe(ok({ services: { jetstream: false, slingshot: false } })).globe.services.relay).toBe(false);
   });
 
   it('runs Slingshot only with Jetstream', () => {

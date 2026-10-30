@@ -2,6 +2,26 @@
 
 Changes to the default stack that existing setups will notice:
 
+## Unreleased
+
+- **Jetstream is v2, so apps on `@bsky/jetstream` can read it.** The snowglobe ran an older Jetstream
+  build (`sha-05c89f0`) that served only `/subscribe`. A v2 client, such as contrail 0.27,
+  subscribes at `/xrpc/network.bsky.jetstream.subscribeEvents` and got a 404. Jetstream is now
+  v0.4.6, which serves both, so Slingshot, PDSls and the network page keep reading `/subscribe`.
+  Its image is built from `stack/jetstream/Dockerfile`: the pinned Jetstream, plus busybox for the
+  health check, since the image has no shell. To move to another Jetstream, change the `FROM` line
+  there, and `up` builds it. Its data is in `/data/v2` on the same volume, so a snowglobe made
+  before starts Jetstream with an empty archive.
+- **The relay runs whenever Jetstream does, with one PDS too.** At start, Jetstream v2 asks the
+  relay for the network's hosts, which a PDS refuses (HTTP 401). `relay: auto` now turns it on
+  for Jetstream, and `relay: false` with Jetstream on is an error. With `jetstream: false`, one
+  PDS still runs no relay, and Tap reads that PDS.
+- **A new snowglobe's first `up` waits about 90 seconds longer.** Jetstream's first start tries to
+  backfill each PDS directly, and its HTTP client refuses private addresses, which is where every
+  PDS is in Docker. It retries, gives up, and then follows the relay from the oldest event the
+  relay still holds. Jetstream v0.4.6 has no setting to allow private
+  addresses. Later starts skip this and are ready in seconds.
+
 ## v0.3.0 (2026-10-24)
 
 - **What snowglobe writes and says names the installed command.** The headers of the files it
