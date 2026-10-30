@@ -19,6 +19,8 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx vitest run test/snowglobe
+      # The package as a user installs it, with no lockfile: it installs and makes a new CA.
+      - run: node scripts/packed.mjs
       # snowglobe run uses bubblewrap; Ubuntu 24.04 runners block unprivileged user namespaces.
       - name: Allow bubblewrap
         run: |
