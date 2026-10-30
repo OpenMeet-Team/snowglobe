@@ -111,7 +111,7 @@ services:
       # A folder of its own: a volume from an older snowglobe holds the older Jetstream's files.
       JETSTREAM_DATA_DIR: /data/v2
       JETSTREAM_ADDR: ":6008"
-      # Metrics, and /readyz for the health check.
+      # Metrics, at /metrics.
       JETSTREAM_DEBUG_ADDR: ":6009"
     volumes:
       - jetstream-data:/data
@@ -120,12 +120,14 @@ services:
       - "${SG_JETSTREAM_METRICS_PORT:-${DEVNET_JETSTREAM_METRICS_PORT:-6009}}:6009"
     networks:
       - atproto-devnet
+    # Healthy once it serves: its archive answers 503 until then, as its streams do. The debug
+    # port's /readyz says only that it is listening.
     healthcheck:
-      test: ["CMD", "/busybox", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:6009/readyz"]
+      test: ["CMD", "/busybox", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:6008/xrpc/network.bsky.jetstream.listSegments?limit=1"]
       interval: 5s
       timeout: 3s
       retries: 10
-      # Ready after its first backfill, which asks every PDS for its repos.
+      # A new snowglobe's first start takes a minute or two (docs/how-it-works.md).
       start_period: 120s
 
   # ── TAP (repo sync + backfill) ───────────────────────────────────

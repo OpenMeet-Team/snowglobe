@@ -53,6 +53,8 @@ describe('snowglobe render', () => {
     const jetstream = parse(compose).services.jetstream;
     expect(jetstream.environment.JETSTREAM_RELAY_URL).toBe('http://relay:2470');
     expect(jetstream.image).toBe(base.tags['snowglobe-jetstream']);
+    // Healthy when it serves, not when it listens: /readyz on the debug port is up before the streams are.
+    expect(jetstream.healthcheck.test).toContain('http://127.0.0.1:6008/xrpc/network.bsky.jetstream.listSegments?limit=1');
   });
 
   it('writes the atmo example globe as test/snowglobe/rendered/ has it', () => {

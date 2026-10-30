@@ -27,9 +27,10 @@
   Jetstream v2. It serves `/xrpc/network.bsky.jetstream.subscribeEvents`, which `@bsky/jetstream` clients such as
   contrail read, and the older `/subscribe`, which Slingshot, PDSls and the network page read. Its image is built from
   `stack/jetstream/Dockerfile`, the pinned Jetstream plus busybox for the health check; to move to another
-  Jetstream, change the `FROM` line there, and `snowglobe up` builds it. A new snowglobe's first `up` waits about 90 seconds
+  Jetstream, change the `FROM` line there, and `snowglobe up` builds it. A new snowglobe's first `up` waits a minute or two
   for it: Jetstream's first start tries to backfill each PDS directly, its HTTP client refuses the private addresses
-  the PDSes have in Docker, and it then follows the relay. Later starts are ready in seconds.
+  the PDSes have in Docker, and it then follows the relay. So Jetstream has only what the relay saw: a record written
+  before the relay first reached its PDS never comes through Jetstream, though it is still on the PDS.
 
 ## Slingshot: handles and DIDs inside the network
 

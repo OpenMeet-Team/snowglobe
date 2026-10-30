@@ -308,7 +308,7 @@ services:
         - -q
         - -O
         - /dev/null
-        - http://127.0.0.1:6009/readyz
+        - http://127.0.0.1:6008/xrpc/network.bsky.jetstream.listSegments?limit=1
       interval: 5s
       timeout: 3s
       retries: 10
