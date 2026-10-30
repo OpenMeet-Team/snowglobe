@@ -2,7 +2,7 @@
 
 Changes to the default stack that existing setups will notice:
 
-## Unreleased
+## v0.4.0 (2026-10-30)
 
 - **A new install makes its CA.** Installed where npm resolves the dependencies afresh, as in CI
   or on a new machine, 0.3.0 stopped at the first `up` with "Cannot get schema for 'ECParameters'
