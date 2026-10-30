@@ -4,6 +4,12 @@ Changes to the default stack that existing setups will notice:
 
 ## Unreleased
 
+- **A new install makes its CA.** Installed where npm resolves the dependencies afresh, as in CI
+  or on a new machine, 0.3.0 stopped at the first `up` with "Cannot get schema for 'ECParameters'
+  target". It pinned two certificate libraries that `@peculiar/x509` also uses, and once newer
+  ones came out, npm installed a second copy of each for x509. They now take x509's range, so npm
+  installs one copy. A machine that already had its CA was not affected. If you worked around it
+  with npm `overrides` for `@peculiar/asn1-schema` and `@peculiar/asn1-x509`, remove them.
 - **Jetstream is v2, so apps on `@bsky/jetstream` can read it.** The snowglobe ran an older Jetstream
   build (`sha-05c89f0`) that served only `/subscribe`. A v2 client, such as contrail 0.27,
   subscribes at `/xrpc/network.bsky.jetstream.subscribeEvents` and got a 404. Jetstream is now
