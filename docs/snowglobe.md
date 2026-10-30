@@ -248,8 +248,10 @@ keeps both, and so does a `down -v` that fails. If Docker cannot say whether a s
 
 `snowglobe up` is safe to rerun; a rerun leaves the running services as they are, and only the
 one-shot `init` and `relay-init` run again. A rerun on a changed file stops what the file no longer
-runs, and when it adds a PDS beside a running relay it restarts the relay, which otherwise can wait
-a long time before it redials a PDS that went away and came back. It refuses a PDS named for a handle ending an app
+runs. When a PDS, or nginx in front of it, started after the relay did, `up` restarts the relay
+before it returns: a relay that was running when a PDS went away can wait a long time before it
+redials it, so what the PDS writes meanwhile comes through late, or not for minutes. So a first
+`up` restarts it, after pass 2, and a rerun brings it back to a PDS that restarted. It refuses a PDS named for a handle ending an app
 claimed with `snowglobe app`, before it writes anything. It makes the leaf certificate if there is
 none, brings the stack up, makes the lexicon authority (`lex-authority.local.snowglobe.at` on the file's
 `lexicons.authority` PDS, the bare-handle PDS by default),
