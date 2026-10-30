@@ -29,8 +29,8 @@
   `stack/jetstream/Dockerfile`, the pinned Jetstream plus busybox for the health check; to move to another
   Jetstream, change the `FROM` line there, and `snowglobe up` builds it. A new snowglobe's first `up` waits a minute or two
   for it: Jetstream's first start tries to backfill each PDS directly, its HTTP client refuses the private addresses
-  the PDSes have in Docker, and it then follows the relay. So Jetstream has only what the relay saw: a record written
-  before the relay first reached its PDS never comes through Jetstream, though it is still on the PDS.
+  the PDSes have in Docker, and it then follows the relay. So Jetstream has only what is written after its first
+  start: an earlier record never comes through Jetstream, though it is still on the PDS.
 
 ## Slingshot: handles and DIDs inside the network
 

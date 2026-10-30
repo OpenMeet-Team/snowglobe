@@ -18,15 +18,17 @@ Changes to the default stack that existing setups will notice:
   on for Jetstream. To upgrade, remove `relay: false`, or set `jetstream: false` and
   `slingshot: false` (Slingshot reads Jetstream). With Jetstream off, one PDS still runs no relay,
   and Tap reads that PDS.
-- **Jetstream has only what the relay saw.** A record written before the relay first reached its
-  PDS never comes through Jetstream, not even in a replay from the start. That includes every
-  record in a one-PDS snowglobe made before this version, which ran no relay. The records are
-  still on the PDS, so an app that needs them reads them there, for example with a backfill.
+- **Jetstream has only what is written after its first start.** It starts with an empty archive,
+  its backfill of the PDSes fails (below), and it follows the relay from that moment. A record
+  written before then never comes through Jetstream, not even in a replay from the start. That
+  includes every record in a snowglobe made before this version. The records are still on the
+  PDS, so an app that needs them reads them there, for example with a backfill.
 - **A new snowglobe's first `up` takes a minute or two longer.** `up` now waits until Jetstream
   serves: about 75 seconds with one PDS and 95 with three, in our runs. Jetstream's first start
   tries to backfill each PDS directly, and its HTTP client refuses private addresses, which is
   where every PDS is in Docker; v0.4.6 has no setting to allow them. It retries, gives up, and
-  then follows the relay.
+  then follows the relay. When the relay has not yet heard from a PDS, Jetstream skips the
+  backfill and is ready sooner.
 
 ## v0.3.0 (2026-10-24)
 
