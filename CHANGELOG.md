@@ -24,6 +24,13 @@ Changes to the default stack that existing setups will notice:
   on for Jetstream. To upgrade, remove `relay: false`, or set `jetstream: false` and
   `slingshot: false` (Slingshot reads Jetstream). With Jetstream off, one PDS still runs no relay,
   and Tap reads that PDS.
+- **`up` restarts the relay when a PDS or nginx started after it.** A relay that was running when
+  a PDS went away redials it, and after ten quick failures it waits 30 s between dials. Pass 2 of
+  every first `up` recreates the PDSes, so a record written right after `up` could reach Jetstream
+  or Tap half a minute late, or not for minutes. `up` restarted the relay only when a rerun added
+  a PDS. Now it restarts it whenever a PDS, or nginx in front of them, started after the relay
+  did: once on a first `up`, which takes a few seconds longer, and on a rerun after a PDS
+  restarted. With the relay on for Jetstream, this now happened with one PDS too.
 - **Jetstream has only what is written after its first start.** It starts with an empty archive,
   its backfill of the PDSes fails (below), and it follows the relay from that moment. A record
   written before then never comes through Jetstream, not even in a replay from the start. That

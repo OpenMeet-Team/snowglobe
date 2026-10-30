@@ -8,7 +8,7 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync,
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 // @ts-expect-error: a plain .mjs module, without types
-import { accountPrefixes, endingClash, mergeRoutes } from '../lib/up.mjs';
+import { accountPrefixes, endingClash, mergeRoutes, startedAfterRelay } from '../lib/up.mjs';
 // @ts-expect-error: a plain .mjs module, without types
 import { hostsFile, runNames } from '../lib/hosts.mjs';
 
@@ -21,6 +21,20 @@ describe('what up writes', () => {
     const apps = [{ name: 'atmo', port: 5173, ending: 'ev' }, { name: 'probe', port: 5480, ending: null }];
     expect(endingClash(['alpha', 'ev'], apps)).toEqual({ pds: 'ev', app: 'atmo' });
     expect(endingClash(['alpha', 'beta'], apps)).toBeNull();
+  });
+
+  it('restarts the relay when a PDS or nginx started after it did', () => {
+    // Docker's StartedAt, to the nanosecond.
+    const relay = ['2026-10-30T21:53:50.510123456Z'];
+    const before = '2026-10-30T21:53:40.000000001Z';
+    const after = '2026-10-30T21:54:21.060000000Z';
+    // A first up: pass 2 recreates the PDS after pass 1 started the relay.
+    expect(startedAfterRelay(relay, { 'pds-main': [after], nginx: [before] })).toBe('pds-main');
+    // New certificates restart nginx.
+    expect(startedAfterRelay(relay, { 'pds-main': [before], nginx: [after] })).toBe('nginx');
+    // A rerun that changed nothing, a container that never started, a service with no container.
+    expect(startedAfterRelay(relay, { 'pds-main': [before], nginx: [before] })).toBeNull();
+    expect(startedAfterRelay(relay, { 'pds-main': ['0001-01-01T00:00:00Z'], nginx: [] })).toBeNull();
   });
 });
 
