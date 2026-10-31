@@ -97,11 +97,12 @@ describe('adoptOldNames', () => {
 });
 
 describe('resolveDomain', () => {
-  it('takes the environment, then .env, then the rendered globe, then the default', () => {
+  it('takes the environment, then .env, then the rendered globe, then the globe\'s own domain', () => {
     expect(rd({ root: root('SG_DOMAIN=env.test\n'), env: { SG_DOMAIN: 'x.test' }, rendering: true }).domain).toBe('x.test');
     expect(rd({ root: root('SG_DOMAIN=env.test\n'), env: {} }).domain).toBe('env.test');
     expect(rd({ root: root(undefined, 'globe.test'), env: {} }).domain).toBe('globe.test');
-    expect(rd({ root: root(), env: {} }).domain).toBe('local.snowglobe.at');
+    // Named for its state folder, g.
+    expect(rd({ root: root(), env: {} }).domain).toBe('g.local.snowglobe.at');
   });
 
   it('lets an empty setting in the environment win over .env, and fall through to the globe', () => {
@@ -171,14 +172,35 @@ describe('chooseBind', () => {
     return d;
   };
   const none = async () => false;
-  const mine = (t: string, name: string, extra = {}) => ({ root: root(), state: globe(t, name), project: name, env: {}, listening: none, ownUp: () => false, ...extra });
+  // On Linux, where the name router runs and holds 127.0.0.1, unless a case says otherwise.
+  const mine = (t: string, name: string, extra = {}) => ({ root: root(), state: globe(t, name), project: name, env: {}, listening: none, ownUp: () => false, platform: 'linux', ...extra });
 
-  it('gives a first snowglobe 127.0.0.1 and keeps it', async () => {
+  it('gives a first snowglobe 127.0.0.2 where the name router runs, and keeps it', async () => {
     const t = top();
     const o = mine(t, 'one');
-    expect(await chooseBind(o)).toBe('127.0.0.1');
-    expect(readFileSync(join(o.state, 'bind'), 'utf8')).toBe('127.0.0.1\n');
-    expect(resolveBind({ root: o.root, state: o.state, env: {} })).toBe('127.0.0.1');
+    expect(await chooseBind(o)).toBe('127.0.0.2');
+    expect(readFileSync(join(o.state, 'bind'), 'utf8')).toBe('127.0.0.2\n');
+    expect(resolveBind({ root: o.root, state: o.state, env: {} })).toBe('127.0.0.2');
+  });
+
+  it('gives a first snowglobe 127.0.0.1 where no router runs: not on Linux, or SG_ROUTER=off', async () => {
+    const t = top();
+    expect(await chooseBind(mine(t, 'mac', { platform: 'darwin' }))).toBe('127.0.0.1');
+    const off = top();
+    expect(await chooseBind(mine(off, 'off', { env: { SG_ROUTER: 'off' } }))).toBe('127.0.0.1');
+  });
+
+  it('moves a snowglobe that kept 127.0.0.1 off the router\'s address when it is down, and leaves a running one there', async () => {
+    const t = top();
+    const old = mine(t, 'old');
+    writeFileSync(join(old.state, 'bind'), '127.0.0.1\n');
+    expect(await chooseBind({ ...old, ownUp: () => true })).toBe('127.0.0.1');
+    expect(await chooseBind(old)).toBe('127.0.0.2');
+    expect(readFileSync(join(old.state, 'bind'), 'utf8')).toBe('127.0.0.2\n');
+    // Without the router there is nothing to move off.
+    const mac = mine(t, 'mac', { platform: 'darwin' });
+    writeFileSync(join(mac.state, 'bind'), '127.0.0.1\n');
+    expect(await chooseBind(mac)).toBe('127.0.0.1');
   });
 
   it('gives a second snowglobe the next address no other one has kept', async () => {
@@ -190,7 +212,9 @@ describe('chooseBind', () => {
 
   it('skips an address something answers on, even one no snowglobe kept', async () => {
     const t = top();
-    expect(await chooseBind(mine(t, 'two', { listening: async (a: string) => a === '127.0.0.1' }))).toBe('127.0.0.2');
+    // 127.0.0.2: with the router, 127.0.0.1 is never a choice, so a probe there would show nothing.
+    expect(await chooseBind(mine(t, 'two', { listening: async (a: string) => a === '127.0.0.2' }))).toBe('127.0.0.3');
+    expect(await chooseBind(mine(t, 'mac', { platform: 'darwin', listening: async (a: string) => a === '127.0.0.1' }))).toBe('127.0.0.2');
   });
 
   it('keeps a running snowglobe from before on 127.0.0.1, though something answers there: it is itself', async () => {
@@ -228,7 +252,7 @@ describe('chooseBind', () => {
     expect(existsSync(join(one.state, 'bind'))).toBe(false);
   });
 
-  it('says so when no address from 127.0.0.1 to 127.0.0.50 is free', async () => {
+  it('says so when no address up to 127.0.0.50 is free', async () => {
     await expect(chooseBind(mine(top(), 'x', { listening: async () => true }))).rejects.toThrow(/SG_BIND/);
   });
 });

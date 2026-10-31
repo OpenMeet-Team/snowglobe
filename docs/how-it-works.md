@@ -3,10 +3,15 @@
 ## What runs, and how it's wired
 
 - **Each PDS has an https name.** A PDS's `PDS_HOSTNAME` is `<name>.<domain>`, such as
-  `main.local.snowglobe.at`. A PDS with `bare_handles` takes handles under the domain itself; every
-  other PDS takes its own (`.regular.local.snowglobe.at`). Each runs with `PDS_DEV_MODE=false`, as
+  `main.snowglobe.local.snowglobe.at`. A PDS with `bare_handles` takes handles under the domain itself;
+  every other PDS takes its own (`.regular.<domain>`). Each runs with `PDS_DEV_MODE=false`, as
   on the real network.
-- **nginx routes by name.** It answers on port 443 with a certificate from the snowglobe's CA, and
+- **The name router sends each name to its snowglobe.** Public DNS answers every name under
+  `local.snowglobe.at` with `127.0.0.1`, where one router for the machine reads the name a connection
+  asks for and passes the connection, still encrypted, to the snowglobe whose domain it is under
+  ([The name router](snowglobe.md#the-name-router)).
+- **nginx routes by name within the snowglobe.** It answers on port 443 of the snowglobe's own
+  address with a certificate from the snowglobe's CA, and
   passes the name through, so a PDS can answer `/.well-known/atproto-did` for a handle. A name
   nginx does not list gets no certificate.
 - **The PDSes reach each other over TLS.** Inside Docker, nginx also answers to every PDS's name,
@@ -22,7 +27,7 @@
   that collection's repos is refused by the PDS (HTTP 401), so a repo written before Tap started is
   found when it next writes, and then its whole repo is fetched. That is how the Tap image this
   snowglobe pins behaves (indigo revision `4f47add4`).
-- **Jetstream** is at `ws://127.0.0.1:<SG_JETSTREAM_PORT>`, reading the relay over the Docker network, so the relay
+- **Jetstream** is at `ws://<SG_BIND>:<SG_JETSTREAM_PORT>` (the snowglobe's own address) and at `wss://jetstream.<domain>`, reading the relay over the Docker network, so the relay
   runs even with one PDS: at start Jetstream asks the relay for the network's hosts, which a PDS refuses. It is
   Jetstream v2. It serves `/xrpc/network.bsky.jetstream.subscribeEvents`, which `@bsky/jetstream` clients such as
   contrail read, and the older `/subscribe`, which Slingshot, PDSls and the network page read. Its image is built from
@@ -40,9 +45,9 @@ to the snowglobe's PLC and Jetstream. The public Slingshot cannot see an account
 this one answers for it:
 
 ```sh
-snowglobe run curl -sS --cacert ~/.local/share/snowglobe/ca/ca.crt \
-  'https://slingshot.local.snowglobe.at/xrpc/com.bad-example.identity.resolveMiniDoc?identifier=alice.local.snowglobe.at'
-# {"did":"did:plc:...","handle":"alice.local.snowglobe.at","pds":"https://main.local.snowglobe.at","signing_key":"zQ3..."}
+curl -sS --cacert ~/.local/share/snowglobe/ca/ca.crt \
+  'https://slingshot.snowglobe.local.snowglobe.at/xrpc/com.bad-example.identity.resolveMiniDoc?identifier=alice.snowglobe.local.snowglobe.at'
+# {"did":"did:plc:...","handle":"alice.snowglobe.local.snowglobe.at","pds":"https://main.snowglobe.local.snowglobe.at","signing_key":"zQ3..."}
 ```
 
 It checks a handle both ways, which means it fetches `https://<handle>/.well-known/atproto-did`

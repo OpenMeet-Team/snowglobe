@@ -1,20 +1,20 @@
 // snowglobe up, down and run, without a globe: what up writes and checks before Docker, the guard
-// on the project, and the names run maps. Run them alone with `npx vitest run snowglobe-up`. The
-// CLI runs on a copy of bin/ and lib/ in a temporary root, with a docker on PATH that only records
-// what it was asked; bringing a globe up for real is checked by hand on an isolated copy.
+// on the project, the name router up and down keep, and what run hands a command. Run them alone
+// with `npx vitest run snowglobe-up`. The CLI runs on a copy of bin/ and lib/ in a temporary root,
+// with a docker on PATH that only records what it was asked; bringing a globe up for real is
+// checked by hand on an isolated copy.
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 // @ts-expect-error: a plain .mjs module, without types
 import { accountPrefixes, endingClash, mergeRoutes, startedAfterRelay } from '../lib/up.mjs';
-// @ts-expect-error: a plain .mjs module, without types
-import { hostsFile, runNames } from '../lib/hosts.mjs';
 
 const ROOT = join(__dirname, '..');
 const FOUR = join(ROOT, 'test/snowglobe/four.yml');
-const bwrapWorks = spawnSync('bwrap', ['--dev-bind', '/', '/', '--', 'true']).status === 0;
+// The name router runs on Linux only (lib/env.mjs routerRuns).
+const linux = process.platform === 'linux';
 
 describe('what up writes', () => {
   it('finds a PDS named for an app\'s handle ending', () => {
@@ -38,30 +38,11 @@ describe('what up writes', () => {
   });
 });
 
-describe('what run maps', () => {
-  it('maps the leaf\'s names but its wildcards, handles, apps and extras, each once', () => {
-    const names = runNames({
-      leafNames: 'four.test\nalpha.four.test\n*.four.test\nplc.directory\n*.app.four.test\n',
-      domain: 'four.test',
-      handles: 'carol.four.test\nnot a name\nalpha.four.test\n',
-      apps: [{ name: 'probe', port: 5480, ending: null }],
-      extra: ' x.example  y.example ',
-    });
-    expect(names).toEqual(['four.test', 'alpha.four.test', 'plc.directory', 'carol.four.test', 'probe.app.four.test', 'x.example', 'y.example']);
-  });
-
-  it('keeps the machine\'s hosts file but the lines naming one of ours', () => {
-    const etc = '127.0.0.1 localhost\n10.0.0.5 plc.directory other\n# a comment\n';
-    expect(hostsFile(etc, ['plc.directory', 'four.test'], '127.0.0.2')).toBe(
-      '127.0.0.1 localhost\n# a comment\n# snowglobe (bin/snowglobe.mjs run)\n127.0.0.2 plc.directory\n127.0.0.2 four.test\n',
-    );
-  });
-});
-
 // A root with bin/ and lib/, the four-PDS globe as its snowglobe.yml, rendered with its certificates
 // into the state under HOME (~/.local/share/snowglobe/four), and a docker on PATH that writes what
 // it was asked to docker.log and fails, unless SHIM_EXIT says otherwise: a guard that let up
-// through then ends the run at once instead of waiting on a globe.
+// through then ends the run at once instead of waiting on a globe. It says the name router is
+// running once it was run (router.up), and that the project named other has an nginx up.
 function globeRoot() {
   // realpath: on macOS tmpdir() is under /var, a link to /private/var, which is what a command's cwd reports.
   const r = mkdtempSync(join(realpathSync(tmpdir()), 'snowglobe-up-'));
@@ -73,7 +54,24 @@ function globeRoot() {
   const shim = join(r, 'shim');
   mkdirSync(shim);
   symlinkSync(process.execPath, join(shim, 'node'));
-  writeFileSync(join(shim, 'docker'), `#!/bin/sh\necho "$*" >> ${join(r, 'docker.log')}\ncase "$*" in *'ps -a --format'*) echo 'exited 0';; esac\nexit "\${SHIM_EXIT:-1}"\n`, { mode: 0o755 });
+  const up = join(r, 'router.up');
+  writeFileSync(
+    join(shim, 'docker'),
+    [
+      '#!/bin/sh',
+      `echo "$*" >> ${join(r, 'docker.log')}`,
+      'case "$*" in',
+      `  *'ps -a --format'*) echo 'exited 0';;`,
+      `  'inspect -f '*' snowglobe-router') [ -f ${up} ] && echo 'true|' && exit 0;;`,
+      `  'run -d --name snowglobe-router'*) touch ${up};;`,
+      `  'rm -f snowglobe-router') rm -f ${up};;`,
+      `  *'com.docker.compose.project=other'*) echo 0123abcd; exit 0;;`,
+      'esac',
+      'exit "${SHIM_EXIT:-1}"',
+      '',
+    ].join('\n'),
+    { mode: 0o755 },
+  );
   cpSync(FOUR, join(r, 'snowglobe.yml'));
   for (const args of [['render'], ['certs']]) expect(sg(r, args).status).toBe(0);
   return r;
@@ -173,27 +171,102 @@ describe('snowglobe up and down', () => {
   });
 });
 
-describe('snowglobe run', () => {
-  it.skipIf(!bwrapWorks)('maps every PDS, handle and app name to SG_BIND, for the command alone', () => {
+describe('the name router', () => {
+  const routes = (r: string, f = '') => join(r, '.local/share/snowglobe/.router/routes', f);
+
+  it.skipIf(!linux)('up routes the globe\'s domain to its address, and starts the router after pass 1', () => {
     const r = globeRoot();
-    writeFileSync(state(r, 'https/apps'), 'probe 5480\n');
-    writeFileSync(state(r, 'https/names'), 'carol.beta.four.test\n');
-    const names = ['four.test', 'alpha.four.test', 'beta.four.test', 'regular.four.test', 'prod.four.test', 'plc.directory', 'carol.beta.four.test', 'probe.app.four.test', 'x.example'];
-    const res = sg(r, ['run', '--', 'getent', 'hosts', ...names], { SG_BIND: '127.0.0.9', HTTPS_RUN_EXTRA_NAMES: 'x.example' });
-    expect(res.status, res.stderr).toBe(0);
-    expect(res.stdout.trim().split('\n').map((l) => l.split(/\s+/))).toEqual(names.map((n) => ['127.0.0.9', n]));
-    // Outside run, none of the globe's own names resolves.
-    expect(spawnSync('getent', ['hosts', 'beta.four.test']).status).not.toBe(0);
+    // nginx never answers at 127.77.0.9, so up stops at the wait after the router step.
+    sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0', SG_NGINX_WAIT: '1' });
+    // Keyed by the compose project, which is what is unique on a machine.
+    expect(readFileSync(routes(r, 'mine'), 'utf8')).toBe('four.test 127.77.0.9 four\n');
+    const conf = readFileSync(join(r, '.local/share/snowglobe/.router/nginx.conf'), 'utf8');
+    expect(conf).toContain('.four.test 127.77.0.9:443;');
+    const log = dockerLog(r).split('\n');
+    const run = log.findIndex((l) => l.startsWith('run -d --name snowglobe-router'));
+    expect(run).toBeGreaterThan(log.findIndex((l) => l.endsWith('up -d --remove-orphans')));
+    expect(log[run]).toContain('--network host');
+    expect(log[run]).toContain(`${join(r, '.local/share/snowglobe/.router')}:/etc/snowglobe-router:ro`);
   });
 
-  it.skipIf(!bwrapWorks)('trusts the globe\'s CA in Node, and exits with the command\'s code', () => {
+  it.skipIf(!linux)('up refuses a domain another running snowglobe is routed at, before any compose command', () => {
+    const r = globeRoot();
+    mkdirSync(routes(r), { recursive: true });
+    writeFileSync(routes(r, 'other'), 'four.test 127.0.0.3 other\n');
+    const res = sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0' });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('compose project other');
+    expect(dockerLog(r)).not.toContain('compose -p');
+    // A route whose project has no nginx up is stale, and no bar: it is dropped, since nginx
+    // refuses the whole config with two routes at one domain.
+    unlinkSync(routes(r, 'other'));
+    writeFileSync(routes(r, 'gone'), 'four.test 127.0.0.3 gone\n');
+    sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0', SG_NGINX_WAIT: '1' });
+    expect(dockerLog(r)).toContain('compose -p mine');
+    expect(existsSync(routes(r, 'gone'))).toBe(false);
+    const conf = readFileSync(join(r, '.local/share/snowglobe/.router/nginx.conf'), 'utf8');
+    expect(conf.match(/^\s+\.four\.test /gm)).toEqual([expect.stringContaining('.four.test')]);
+    expect(conf).toContain('.four.test 127.77.0.9:443;');
+  });
+
+  it.skipIf(!linux)('leaves the router alone for a globe on its own address, and says why', () => {
+    const r = globeRoot();
+    const res = sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0', SG_NGINX_WAIT: '1', SG_BIND: '127.0.0.1' });
+    expect(res.stderr).toContain('the name router\'s address');
+    expect(existsSync(routes(r, 'mine'))).toBe(false);
+    expect(dockerLog(r)).not.toContain('snowglobe-router');
+  });
+
+  it.skipIf(!linux)('down stops routing to the globe, and removes the router with the last route', () => {
+    const r = globeRoot();
+    mkdirSync(routes(r), { recursive: true });
+    writeFileSync(routes(r, 'four'), 'four.test 127.77.0.9 four\n');
+    writeFileSync(routes(r, 'two'), 'two.local.snowglobe.at 127.0.0.3 two\n');
+    writeFileSync(join(r, 'router.up'), '');
+    expect(sg(r, ['down'], { SHIM_EXIT: '0' }).status).toBe(0);
+    expect(existsSync(routes(r, 'four'))).toBe(false);
+    expect(dockerLog(r)).toContain('exec snowglobe-router nginx -s reload');
+    expect(readFileSync(join(r, '.local/share/snowglobe/.router/nginx.conf'), 'utf8')).not.toContain('four.test');
+    // The last one.
+    writeFileSync(routes(r, 'four'), 'four.test 127.77.0.9 four\n');
+    unlinkSync(routes(r, 'two'));
+    expect(sg(r, ['down'], { SHIM_EXIT: '0' }).status).toBe(0);
+    expect(dockerLog(r)).toContain('rm -f snowglobe-router');
+    expect(existsSync(join(r, 'router.up'))).toBe(false);
+  });
+
+  it('ls names the router and what it routes, and lists no snowglobe for its folder', () => {
+    const r = globeRoot();
+    mkdirSync(routes(r), { recursive: true });
+    writeFileSync(routes(r, 'four'), 'four.test 127.77.0.9 four\n');
+    const res = sg(r, ['ls']);
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.stdout).toContain('Name router on 127.0.0.1:443: not running, routing four.test to four');
+    expect(res.stdout).not.toMatch(/^\.router/m);
+    // A route can outlive its state folder; ls still shows it.
+    rmSync(state(r), { recursive: true });
+    const none = sg(r, ['ls']);
+    expect(none.stdout).toContain('No snowglobes in');
+    expect(none.stdout).toContain('routing four.test to four');
+  });
+});
+
+describe('snowglobe run', () => {
+  it('maps no names: the command sees the machine\'s own hosts file and resolver', () => {
+    const r = globeRoot();
+    const res = sg(r, ['run', 'node', '-e', 'process.stdout.write(require("fs").readFileSync("/etc/hosts", "utf8"))']);
+    expect(res.status, res.stderr).toBe(0);
+    expect(res.stdout).toBe(readFileSync('/etc/hosts', 'utf8'));
+  });
+
+  it('trusts the globe\'s CA in Node, and exits with the command\'s code', () => {
     const r = globeRoot();
     const ca = sg(r, ['run', 'node', '-e', 'console.log(process.env.NODE_EXTRA_CA_CERTS)']);
     expect(ca.stdout.trim()).toBe(join(r, '.local/share/snowglobe/ca/ca.crt'));
     expect(sg(r, ['run', 'sh', '-c', 'exit 7']).status).toBe(7);
   });
 
-  it.skipIf(!bwrapWorks)('hands the app\'s settings over, logins too, over the environment, and says which it replaced', () => {
+  it('hands the app\'s settings over, logins too, over the environment, and says which it replaced', () => {
     const r = globeRoot();
     writeFileSync(join(r, 'snowglobe.yml'), `${readFileSync(FOUR, 'utf8')}apps:\n  - name: web\n    env:\n      PLC: \${services.plc.url}\n      PW: \${accounts.alice.password}\n      KEEP: \${domain}\n`);
     writeFileSync(state(r, 'accounts.env'), 'ALICE_PASSWORD=hunter2\n');
@@ -208,7 +281,7 @@ describe('snowglobe run', () => {
     expect(sg(r, ['run', '--app', 'nope', ...show]).status).toBe(2);
   });
 
-  it.skipIf(!bwrapWorks)('names a CA setting it replaced, and stays quiet when the value is the same', () => {
+  it('names a CA setting it replaced, and stays quiet when the value is the same', () => {
     const r = globeRoot();
     const ca = join(r, '.local/share/snowglobe/ca/ca.crt');
     writeFileSync(join(r, 'snowglobe.yml'), `${readFileSync(FOUR, 'utf8')}apps:\n  - name: web\n    env:\n      NODE_EXTRA_CA_CERTS: \${ca.file}\n`);
@@ -225,12 +298,10 @@ describe('snowglobe run', () => {
     expect(sg(r, ['run', ...show], { NODE_EXTRA_CA_CERTS: elsewhere }).stderr).toBe('');
   });
 
-  it('says plainly that it needs bubblewrap when there is none', () => {
+  it('needs no bubblewrap: only the command itself on PATH', () => {
     const r = globeRoot();
-    const res = sg(r, ['run', 'true'], {}, join(r, 'shim'));
-    expect(res.status).toBe(1);
-    expect(res.stderr.trim().split('\n')).toHaveLength(1);
-    expect(res.stderr).toContain('bubblewrap');
+    const res = sg(r, ['run', 'node', '-e', 'process.exit(3)'], {}, join(r, 'shim'));
+    expect(res.status, res.stderr).toBe(3);
   });
 
   it('takes no empty command', () => {

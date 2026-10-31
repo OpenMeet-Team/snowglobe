@@ -11,69 +11,74 @@ It runs on Linux, and on Windows under WSL 2; both are tested with `node scripts
 and [open an issue](https://github.com/OpenMeet-Team/snowglobe/issues) with what broke, or that it
 worked.
 
-With `docs/examples/atmo.yml`, which has three PDSes (the default file has one, `main`, at `main.local.snowglobe.at`):
+With `docs/examples/atmo.yml`, which has three PDSes (the default file has one, `main`), and `<domain>`
+its domain, `snowglobe.local.snowglobe.at`:
 
 | Name | Served by |
 | --- | --- |
-| `alpha.local.snowglobe.at`, `*.local.snowglobe.at` | `pds-alpha`, the spaces alpha (`79d6307e`), and its handles; invites required |
-| `regular.local.snowglobe.at`, `*.regular.local.snowglobe.at` | `pds-regular`, a current release, and its handles |
-| `prod.local.snowglobe.at`, `*.prod.local.snowglobe.at` | `pds-prod`, an older release (0.4.5009, pinned by digest), and its handles |
-| `plc.directory` | the snowglobe's own PLC |
-| `slingshot.local.snowglobe.at` | `slingshot`, which answers a handle's DID and PDS ([Slingshot](how-it-works.md#slingshot-handles-and-dids-inside-the-network)) |
-| `plc.local.snowglobe.at`, `relay.local.snowglobe.at`, `jetstream.local.snowglobe.at` | the PLC, the relay and Jetstream, as a snowglobe names them, so an app's browser code reaches them over https too |
-| `pdsls.local.snowglobe.at` | `pdsls`, the record browser ([PDSls](https://pds.ls)) for this network (below) |
-| `local.snowglobe.at` | nginx itself: the network's page, the one a snowglobe serves at its bare name (below) |
+| `alpha.<domain>`, `*.<domain>` | `pds-alpha`, the spaces alpha (`79d6307e`), and its handles; invites required |
+| `regular.<domain>`, `*.regular.<domain>` | `pds-regular`, a current release, and its handles |
+| `prod.<domain>`, `*.prod.<domain>` | `pds-prod`, an older release (0.4.5009, pinned by digest), and its handles |
+| `slingshot.<domain>` | `slingshot`, which answers a handle's DID and PDS ([Slingshot](how-it-works.md#slingshot-handles-and-dids-inside-the-network)) |
+| `plc.<domain>`, `relay.<domain>`, `jetstream.<domain>` | the PLC, the relay and Jetstream, as a snowglobe names them, so an app reaches them over https too |
+| `pdsls.<domain>` | `pdsls`, the record browser ([PDSls](https://pds.ls)) for this network (below) |
+| `<domain>` | nginx itself: the network's page, the one a snowglobe serves at its bare name (below) |
 | `<name>.app.<domain>` | an app on this machine, at the port `snowglobe app` recorded for `<name>` |
-| `*.<ending>.local.snowglobe.at` | the app that claimed `<ending>` with `snowglobe app`, for the handles it hands out |
+| `*.<ending>.<domain>` | the app that claimed `<ending>` with `snowglobe app`, for the handles it hands out |
 
-Each PDS in the file is a service of its own, `pds-<name>`, at `<name>.local.snowglobe.at`; the one with
-`bare_handles` takes `*.local.snowglobe.at`, and every other its own `*.<name>.local.snowglobe.at`. nginx answers
-all of them on `127.0.0.1:443` with one certificate from a local CA. Each PDS's public URL, OAuth
-issuer and DID document endpoint is `https://<its name>`, and the relay crawls every PDS as a
-`wss://` host. Inside the compose network nginx also answers to every PDS's name, so the PDSes,
-the relay (and Tap, when on) reach each other over TLS; no service shares another's network but Slingshot. On the machine, public DNS answers every name under the domain with `127.0.0.1`, so they work for any program. `plc.directory`
-resolves to the snowglobe only for commands run under `snowglobe run`; every other program still reaches the real
-`plc.directory`.
+Each PDS in the file is a service of its own, `pds-<name>`, at `<name>.<domain>`; the one with
+`bare_handles` takes `*.<domain>`, and every other its own `*.<name>.<domain>`. nginx answers all of
+them on port 443 of the snowglobe's own loopback address, with one certificate from a local CA. Each
+PDS's public URL, OAuth issuer and DID document endpoint is `https://<its name>`, and the relay crawls
+every PDS as a `wss://` host. Inside the compose network nginx also answers to every PDS's name, so the
+PDSes, the relay (and Tap, when on) reach each other over TLS; no service shares another's network but
+Slingshot. On the machine, public DNS answers every name under the domain with `127.0.0.1`, where the
+[name router](#the-name-router) passes it on to this snowglobe, so the names work for any program, a
+handle made a second ago included. `plc.directory` is the real directory everywhere; an app is told
+the snowglobe's own PLC, `https://plc.<domain>` ([Your app in a snowglobe](your-app.md)).
 
-`local.snowglobe.at` is the default file's domain, and every name in the table above (and in the
-rest of these docs) uses it. The name is ours, and its public DNS points every name under it at
-`127.0.0.1`, so a lookup that misses the snowglobe's own mapping lands on your machine, not on someone
-else's server. Pick another domain freely, but not one under `.test`, `.local`, `.localhost`,
-`.invalid` or `.example`: the stack comes up there, but a PDS refuses an OAuth client at such a name,
-so nobody can sign in through a group host or PDSls. `SG_DOMAIN` replaces it. Set it in the environment or in `.env` and
-the same stack comes up under that domain: `<name>.<domain>` for each PDS, with handles at
-`<name>.<domain>` for the one with `bare_handles`. `plc.directory` stays as it is; apps follow the domain, at `<name>.app.<domain>`.
-In `.env`, write the domain itself (quotes, `export` and a trailing comment are fine); the scripts
-refuse a `${...}` there, which compose would expand and they would not. Your one CA can vouch only for
-the default domain, the domain it was made under and `plc.directory` ([The CA](browser.md#the-ca)). For another
-domain, delete `<state root>/ca/` and run `up` again; that makes a new CA, which you trust again, and
-every snowglobe then uses it.
+The domain is `<globe>.local.snowglobe.at` unless the file names one: each snowglobe gets its own, so
+the name router can tell them apart by name alone. `local.snowglobe.at` is ours, and its public DNS
+points every name under it, at any depth, at `127.0.0.1`, so a name that escapes a snowglobe lands on
+your machine, not on someone else's server. A `domain:` line in the file, or `SG_DOMAIN`, picks
+another. Pick freely, but not one under `.test`, `.local`, `.localhost`, `.invalid` or `.example`: the
+stack comes up there, but a PDS refuses an OAuth client at such a name, so nobody can sign in through
+a group host or PDSls. A domain outside `local.snowglobe.at` has to resolve to `127.0.0.1` the same
+way for the router to reach it, and two snowglobes cannot be up at one domain: `up` refuses the
+second. Set `SG_DOMAIN` in the environment or in `.env` and the same stack comes up under that domain:
+`<name>.<domain>` for each PDS, with handles at `<name>.<domain>` for the one with `bare_handles`;
+apps follow the domain, at `<name>.app.<domain>`. In `.env`, write the domain itself (quotes, `export`
+and a trailing comment are fine); the scripts refuse a `${...}` there, which compose would expand and
+they would not. Your one CA can vouch only for names under `local.snowglobe.at`, a domain outside it
+that it was made under, and `plc.directory` ([The CA](browser.md#the-ca)). For another domain outside
+`local.snowglobe.at`, delete `<state root>/ca/` and run `up` again; that makes a new CA, which you
+trust again, and every snowglobe then uses it.
 
 The snowglobe knows no app. It has no app's accounts, invite codes, lexicons or ports. It gives an app
 tools to make its own ([Your app in a snowglobe](your-app.md)), and using them is optional.
 
 ## The network's page
 
-`https://local.snowglobe.at/` is the network's own page (`page/index.html`): every service and its
+`https://<domain>/` is the network's own page (`page/index.html`): every service and its
 health, every account on each PDS, the apps `snowglobe app` routed, and the network's writes
 from Jetstream, the last 24 hours, then live. nginx serves it with this snowglobe's relays (`stack/page/snowglobe.conf`), a fixed GET-only path per read, so the page
-asks nothing but `local.snowglobe.at`. `snowglobe up` and `snowglobe app` write what it lists into
+asks nothing but `<domain>`. `snowglobe up` and `snowglobe app` write what it lists into
 `<state>/https/nginx/snowglobe.json`. Open it from a browser set up as in [From a browser on your own
-computer](browser.md#from-a-browser-on-your-own-computer), or read the facts it shows from a script: `snowglobe run curl -s --cacert ~/.local/share/snowglobe/ca/ca.crt https://local.snowglobe.at/snowglobe.json`
+computer](browser.md#from-a-browser-on-your-own-computer), or read the facts it shows from a script: `curl -s --cacert ~/.local/share/snowglobe/ca/ca.crt https://snowglobe.local.snowglobe.at/snowglobe.json`
 prints them as JSON. The file lists the snowglobe's services, its PDSes and group hosts (each with the path the page
 reads its accounts from; the handles and DIDs are not in the file) and its apps, so a test or tool can find where things
 are without a copy of the snowglobe's file.
 
 ## PDSls: browsing the network's records
 
-`https://pdsls.local.snowglobe.at/` is [PDSls](https://github.com/notjuliet/pdsls), the record browser at
-pds.ls, for this network: `https://pdsls.local.snowglobe.at/at://alice.local.snowglobe.at` shows her repo, its
+`https://pdsls.<domain>/` is [PDSls](https://github.com/notjuliet/pdsls), the record browser at
+pds.ls, for this network: `https://pdsls.<domain>/at://alice.<domain>` shows her repo, its
 collections and records, as `https://pds.ls/at://...` does on the real network. Apps that link to
 pds.ls point their links here on a snowglobe. `stack/pdsls/` builds it from a pinned upstream commit
 with `stack/pdsls/network.patch`, which lets the page that loads it give it a network's addresses (unset,
 it is the public network's, unchanged), and `stack/pdsls/server.mjs` serves it with this network's: the PLC
-at `plc.local.snowglobe.at`, Jetstream and the relay as the stream page's defaults, and the lexicon authority
-for every NSID. It looks up handles and `did:web` documents for names under `local.snowglobe.at` only, and
+at `plc.<domain>`, Jetstream and the relay as the stream page's defaults, and the lexicon authority
+for every NSID. It looks up handles and `did:web` documents for names under the domain only, and
 turns off what has no stand-in here: DNS lookups, Bluesky search and avatars, backlinks, Spacedust,
 the public font host, link previews. Signing in uses a client at its own address, so editing records
 works against the snowglobe's PDSes.
@@ -82,6 +87,25 @@ A record's Schema tab shows its lexicon when the authority holds it and PDSls's 
 Some lexicons fail that parser, as they would on pds.ls. Examples are the opensocial proposal's
 lexicons (a `space` definition, a `space-ref` format) and atmo's permission set. The record view
 still works for them.
+
+## The name router
+
+One name router serves every snowglobe on the machine: a stock nginx (the image each snowglobe's nginx
+runs) in a container named `snowglobe-router`, on the host's network at `127.0.0.1:443`. It reads the
+name each TLS connection asks for and passes the connection, still encrypted, to the snowglobe whose
+domain the name is under, on that snowglobe's own address; each snowglobe's nginx serves its own
+certificate. The longest domain wins, so a snowglobe still on the shared `local.snowglobe.at` keeps
+working beside ones under it, and a name under no snowglobe's domain is closed. It is how a hosted
+globe works too, where the cluster's gateway routes by name.
+
+`snowglobe up` adds the snowglobe's route and starts the router if it is not running; `snowglobe down`
+takes the route away, and the router with the last one. `snowglobe ls` ends with a line saying whether
+it runs and what it routes. It runs on Linux with Docker Engine, WSL 2 included; Docker Desktop is not
+tested. On other systems, or with `SG_ROUTER=off`, there is no router: a new snowglobe takes the first
+free address from `127.0.0.1` as before 0.5.0, and only the one on `127.0.0.1` is reached by name
+(`SG_BIND=127.0.0.1` puts one there). A snowglobe
+on `127.0.0.1` (set with `SG_BIND`, or made before 0.5.0 and still running) holds the router's address,
+so the router does not start while it runs, and `up` says how to move it.
 
 ## The file and the commands
 
@@ -92,7 +116,7 @@ invite codes, app routes) goes in the snowglobe's state folder, in your own acco
 
 ```yaml
 globe: bookclub                  # lowercase letters and digits; the snowglobe's own name
-domain: local.snowglobe.at       # every name below is under it (local.snowglobe.at if left out)
+# domain: bookclub.local.snowglobe.at   # every name below is under it; left out, it is this, the globe's own
 
 pds:                             # at least one; each is pds-<name> at https://<name>.<domain>
   - name: alpha
@@ -126,7 +150,7 @@ accounts:                        # <name>@<pds>; up makes each one
 
 apps:
   - name: bookclub
-    local: { port: 5173, handles: bc }   # https://bookclub.app.local.snowglobe.at; handles: only for an app that hands out
+    local: { port: 5173, handles: bc }   # https://bookclub.app.<domain>; handles: only for an app that hands out
                                          # handles of its own, as a PDS does. Names under bc.<domain> then go to the app
 ```
 
@@ -154,8 +178,7 @@ SG_OPENSOCIAL_BUILD=../atproto-group-host snowglobe up ../myapp/snowglobe.yml
 `image:` in place of `build` runs a built image instead. With neither, and the variable unset,
 `render` and `up` stop before anything changes and say so. A group host makes its groups' accounts
 itself, takes no invite code, and resolves every name under the domain through nginx, its members'
-handles too. Under `snowglobe run`, list a group's handle in `HTTPS_RUN_EXTRA_NAMES`, as for any
-handle.
+handles too. A group's handle resolves on the machine as soon as the group is made, like any handle.
 
 `up` seeds what the file asks for, every run, and a rerun changes nothing that is already there:
 
@@ -177,11 +200,11 @@ The commands, each `snowglobe <command>`:
 | `render [<file>] [--out <dir>] [--domain <domain>]` | writes the snowglobe it describes into `<state>/globe/`, or `<dir>` (`up` does this itself); `--domain` replaces the file's domain, for a copy beside another snowglobe |
 | `certs [--check]` | makes your CA, once, and the leaf nginx serves (`up` does this itself) |
 | `trust [--remove] [--dry-run] [--no-sudo]` | puts your CA in the system and browser trust stores, or takes it out ([From a browser on your own computer](browser.md)) |
-| `ls` | lists the snowglobes on this machine: name, domain, up or down, and the file that owns each |
+| `ls` | lists the snowglobes on this machine: name, domain, up or down, and the file that owns each; then whether the name router runs, and what it routes |
 | `up [<file> \| <name>] [-f <file>] [--default]` | brings the snowglobe up and seeds it ([Up and down](#up-and-down)) |
 | `down [<file> \| <name>] [-f <file>] [-v]` | stops it; `-v` drops its volumes too |
 | `env [--app <name>] [--secrets] [--dotenv]` | prints the settings an app is handed ([An app's settings](your-app.md#snowglobe-env-know-where-things-are)) |
-| `run [--app <name>] [--] <cmd>` | runs a command that reaches the snowglobe at the real network's names (Linux) |
+| `run [--app <name>] [--] <cmd>` | runs a command with the app's settings, trusting the snowglobe's CA ([Running a command](your-app.md#snowglobe-run-settings-and-the-ca)) |
 | `account`, `invite`, `lexicons`, `app` | make an app's own accounts, invite codes, lexicons and routes ([Tools for an app](your-app.md#tools-for-an-app)) |
 
 Exit 2 means the command was called wrong, and 1 that the snowglobe refused.
@@ -250,7 +273,7 @@ redials it, so what the PDS writes meanwhile comes through late, or not for minu
 starts the PDSes twice (below), so it restarts the relay once, and a rerun brings it back to a PDS
 that restarted. It refuses a PDS named for a handle ending an app
 claimed with `snowglobe app`, before it writes anything. It makes the leaf certificate if there is
-none, brings the stack up, makes the lexicon authority (`lex-authority.local.snowglobe.at` on the file's
+none, brings the stack up and routes its domain through the [name router](#the-name-router), makes the lexicon authority (`lex-authority.<domain>` on the file's
 `lexicons.authority` PDS, the bare-handle PDS by default),
 brings the stack up again with `SG_LEXICON_AUTHORITY_DID` so every PDS starts with it. It writes no
 settings file for an app: `snowglobe env` prints them ([An app's settings](your-app.md#snowglobe-env-know-where-things-are)).
@@ -260,14 +283,16 @@ into `<state>/accounts.env`, on the PDS with bare handles (else the first). Noth
 Published ports, all on the snowglobe's own loopback address: 443 (nginx), the proxy (`SG_PROXY_PORT`, 1080), the PLC (`SG_PLC_PORT`), Jetstream
 (`SG_JETSTREAM_PORT`, `SG_JETSTREAM_METRICS_PORT`) and maildev (`SG_MAILDEV_WEB_PORT`,
 `SG_MAILDEV_SMTP_PORT`), and Tap when it is on (`SG_TAP_PORT`, 2480). The PDS, relay and Postgres ports are not published: reach a PDS by its
-https name. The first `up` of a snowglobe picks its address, `127.0.0.1` if nothing answers there, else the
-next `127.0.0.N` that no other snowglobe has kept and nothing answers on, and keeps it in the `bind` file in the
-snowglobe's state folder. That is why a second snowglobe starts beside the first with no settings. Set `SG_BIND`
-(in the environment or `.env`; the scripts read it as compose does) to choose the address yourself;
-`snowglobe run` maps the names to it. The scripts refuse anything but a `127.x.y.z` address: the snowglobe's
-logins are throwaway, so it is never published beyond this machine.
+https name. The first `up` of a snowglobe picks its address, the first `127.0.0.N` from `127.0.0.2` that no
+other snowglobe has kept and nothing answers on (`127.0.0.1` is the name router's; where the router does not run,
+it starts from `127.0.0.1`), and keeps it in the `bind` file in the snowglobe's state folder. That is why a second
+snowglobe starts beside the first with no settings. A snowglobe that kept `127.0.0.1` before 0.5.0 moves to a free
+address on its next `up`, once it is down. Set `SG_BIND` (in the environment or `.env`; the scripts read it as
+compose does) to choose the address yourself; the router follows it. The scripts refuse anything but a
+`127.x.y.z` address: the snowglobe's logins are throwaway, so it is never published beyond this machine.
 
-`snowglobe down` runs `docker compose down` (with `-v` when given) and never deletes the state folder. The PLC's
+`snowglobe down` runs `docker compose down` (with `-v` when given) and never deletes the state folder. Then the
+name router stops routing to the snowglobe, and is removed when no snowglobe is left to route. The PLC's
 database is a named volume (`plc-db`), so a `down` without `-v` keeps every DID along with the
 PDSes. After `-v`, the next `snowglobe up` starts over: init reseeds `alice` and `bob` and rewrites
 `<state>/accounts.env` from scratch, so the logins the tools wrote there are gone along with their
@@ -284,8 +309,8 @@ and nothing in the checkout:
 - `<state>/globe/`: the rendered snowglobe, nothing secret. `compose.yml`, `nginx/` (each PDS's and
   group host's server and the page's relays to it), `leaf-names` and `globe.env` (the facts the scripts read).
   `snowglobe up` writes it again on every run; `snowglobe render` writes it alone.
-- `<state>/https/`: `leaf.crt` and `leaf.key` (what nginx serves),
-  `names` (the handles `snowglobe run` maps), `apps` and `nginx/` (the app routes and the page's
-  `snowglobe.json`), and `hosts` (the
-  hosts file `snowglobe run` last generated).
+- `<state>/https/`: `leaf.crt` and `leaf.key` (what nginx serves), and `apps` and `nginx/` (the app
+  routes and the page's `snowglobe.json`).
 - `<state root>/ca/`: `ca.crt` and `ca.key`, your CA, one for all your snowglobes ([The CA](browser.md#the-ca)).
+- `~/.local/share/snowglobe/.router/`: the [name router](#the-name-router)'s `routes/`, one file per compose
+  project it routes, and the `nginx.conf` written from them. It is there whatever `XDG_DATA_HOME` says.

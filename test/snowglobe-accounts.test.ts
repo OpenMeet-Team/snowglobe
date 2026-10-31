@@ -5,7 +5,7 @@
 // curl. Skipped where port 443 cannot be bound without root.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:https';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -162,7 +162,8 @@ describe.skipIf(!canBind443)('snowglobe account', () => {
     expect(env.APP_OWNER_PASSWORD).toMatch(/^[0-9a-f]{32}$/);
     expect(r.stdout + r.stderr).not.toContain(env.APP_OWNER_PASSWORD);
     expect(statSync(accountsFile()).mode & 0o777).toBe(0o600);
-    expect(readFileSync(join(STATE(), 'https/names'), 'utf8').split('\n')).toContain(`owner.${D}`);
+    // Nothing keeps a list of handles: the name router reaches every one by its domain.
+    expect(existsSync(join(STATE(), 'https/names'))).toBe(false);
     const minted = globe.seen.filter((q) => q.nsid === 'com.atproto.server.createInviteCode');
     expect(minted.map((q) => [q.pds, q.body.useCount])).toEqual([['alpha', 1]]);
   });
@@ -173,7 +174,6 @@ describe.skipIf(!canBind443)('snowglobe account', () => {
     expect(r.status, r.stderr).toBe(0);
     expect(r.stdout.trim()).toBe(before);
     expect(r.stderr).toContain('Found');
-    expect(readFileSync(join(STATE(), 'https/names'), 'utf8').split('\n').filter((l) => l === `owner.${D}`)).toHaveLength(1);
   });
 
   it('makes <name>.<pds>.<domain> on another PDS, with an invite only where invites are required', async () => {

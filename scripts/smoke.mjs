@@ -15,8 +15,11 @@
 // globe: SG_BIND and SG_DOMAIN come from the environment or the copied .env if set there,
 // else 127.0.0.3 and the default file's domain, and the steps on snowglobe env check they were used.
 // The copy is taken down with -v at the end whatever happened; its folder is left for a look.
+// The snowglobe has a domain of its own (the atmo example's file, less any domain line), which
+// the name router reaches by name; the router is the machine's, shared with your own snowglobes.
 //
-// Needs Docker with compose, Node 20+ and, for the run steps, Linux with bubblewrap.
+// Needs Docker with compose and Node 20+. The steps that reach names need the name router, which
+// runs on Linux.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -34,7 +37,9 @@ for (const name of readdirSync(SRC)) if (!SKIP.has(name)) cpSync(join(SRC, name)
 symlinkSync(join(SRC, 'node_modules'), join(root, 'node_modules'));
 
 const { adoptOldNames, setting } = await import(join(root, 'lib/env.mjs'));
-const { DEFAULT_DOMAIN } = await import(join(root, 'lib/config.mjs'));
+const { localDomain } = await import(join(root, 'lib/config.mjs'));
+const { ROUTER_ADDRESS } = await import(join(root, 'lib/env.mjs'));
+const { routerDir } = await import(join(root, 'lib/router.mjs'));
 // Old DEVNET_ and SNOWGLOBE_ settings as their SG_ names, and then gone, so none outlives the
 // overrides below.
 const given = { ...process.env };
@@ -54,11 +59,11 @@ const env = {
   SG_BIND: setting('SG_BIND', { root, env: given }) || '127.0.0.3',
 };
 for (const k of ['SG_FILE', 'ACCOUNTS_FILE', 'SG_PUBLIC', 'SG_RESET_OK']) delete env[k];
-// The atmo example globe plus one app, with the settings the steps below check. Its name is smokeapp,
-// so the route the app step adds is the one the file names.
+// The atmo example globe, on a domain of its own, plus one app, with the settings the steps below
+// check. Its name is smokeapp, so the route the app step adds is the one the file names.
 writeFileSync(
   join(root, 'snowglobe.yml'),
-  `${readFileSync(join(root, 'docs/examples/atmo.yml'), 'utf8')}
+  `${readFileSync(join(root, 'docs/examples/atmo.yml'), 'utf8').replace(/^domain:.*\n/m, '')}
 apps:
   - name: smokeapp
     env:
@@ -69,7 +74,8 @@ apps:
       SMOKE_AUTHORITY_DID: \${lexicons.authority.did}
 `,
 );
-const wantDomain = setting('SG_DOMAIN', { root, env: given }) || DEFAULT_DOMAIN;
+// The example's globe is called snowglobe.
+const wantDomain = setting('SG_DOMAIN', { root, env: given }) || localDomain('snowglobe');
 
 const sg = (args, opts = {}) =>
   spawnSync(process.execPath, [join(root, 'bin/snowglobe.mjs'), ...args], { cwd: root, env, encoding: 'utf8', timeout: 900_000, ...opts });
@@ -105,7 +111,7 @@ function diagnose(r) {
 const version = (cmd, args) => spawnSync(cmd, args, { encoding: 'utf8' }).stdout?.trim().split('\n')[0] || 'missing';
 
 console.log(`copy: ${root}`);
-console.log(`node ${process.version}; ${version('docker', ['compose', 'version'])}; bwrap ${version('bwrap', ['--version'])}; ${process.platform}`);
+console.log(`node ${process.version}; ${version('docker', ['compose', 'version'])}; ${process.platform}`);
 console.log(`domain ${wantDomain}, bind ${env.SG_BIND}, project ${PROJECT}\n`);
 
 // The app, in a process of its own: this one waits on each command in turn, and would not answer.
@@ -160,10 +166,11 @@ try {
   r = sg(['app', 'smokeapp', String(APP_PORT), 'sm']);
   step('app add', r.status === 0, why(r));
 
-  const names = [wantDomain, ...['alpha', 'regular', 'prod'].map((p) => `${p}.${wantDomain}`), 'plc.directory', `smokeapp.app.${wantDomain}`];
-  r = run(['getent', 'hosts', ...names]);
-  const mapped = (r.stdout ?? '').trim().split('\n').filter((l) => l.startsWith(`${env.SG_BIND} `)).length;
-  step('run maps the names', r.status === 0 && mapped === names.length, `${mapped} of ${names.length} on ${env.SG_BIND}`);
+  // Nothing maps a name: public DNS sends each one to the name router.
+  const names = [wantDomain, ...['alpha', 'regular', 'prod'].map((p) => `${p}.${wantDomain}`), `smokeapp.app.${wantDomain}`, `made-later.alpha.${wantDomain}`];
+  r = run(['getent', 'ahostsv4', ...names]);
+  const routed = new Set((r.stdout ?? '').trim().split('\n').filter((l) => l.startsWith(`${ROUTER_ADDRESS} `)).map((l) => l.split(/\s+/).pop()));
+  step('names resolve to the name router', names.every((n) => routed.has(n)), `${names.filter((n) => routed.has(n)).length} of ${names.length} on ${ROUTER_ADDRESS}`);
 
   // Node under run, with no flags: the names resolve and the CA is trusted.
   const fetches = `
@@ -174,11 +181,10 @@ try {
 
   r = sg(['app', '--remove', 'smokeapp']);
   step('app --remove', r.status === 0, why(r));
-  // run maps only routed apps, so the name is added to reach nginx at all. nginx reloads in the
-  // background, so the old route can answer for a moment.
+  // nginx reloads in the background, so the old route can answer for a moment.
   let gone = '';
   for (let n = 0; n < 10 && gone !== '404'; n++) {
-    gone = run([process.execPath, '-e', `fetch('https://smokeapp.app.${wantDomain}/x').then((r) => console.log(r.status), (e) => console.log(e.cause?.code ?? e.message))`], { HTTPS_RUN_EXTRA_NAMES: `smokeapp.app.${wantDomain}` }).stdout?.trim();
+    gone = run([process.execPath, '-e', `fetch('https://smokeapp.app.${wantDomain}/x').then((r) => console.log(r.status), (e) => console.log(e.cause?.code ?? e.message))`]).stdout?.trim();
     if (gone !== '404') spawnSync('sleep', ['1']);
   }
   step('removed app answers 404', gone === '404', gone);
@@ -199,6 +205,7 @@ try {
   const containers = count(['ps', '-a']);
   const volumes = count(['volume', 'ls']);
   step('down -v leaves nothing', r.status === 0 && containers === 0 && volumes === 0, `${containers} containers, ${volumes} volumes`);
+  step('down drops the route', !existsSync(join(routerDir(env), 'routes', PROJECT)));
 }
 
 console.log(`\n${failed ? `${failed} step(s) FAILED` : 'every step passed'}; the copy is ${root}`);

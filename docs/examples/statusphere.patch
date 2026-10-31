@@ -1,20 +1,22 @@
 diff --git a/lib/auth/client.ts b/lib/auth/client.ts
-index f756c7c..dedba2a 100644
+index f756c7c..f984474 100644
 --- a/lib/auth/client.ts
 +++ b/lib/auth/client.ts
-@@ -17,6 +17,7 @@ let client: NodeOAuthClient | null = null;
+@@ -17,6 +17,8 @@ let client: NodeOAuthClient | null = null;
  
  const PUBLIC_URL = process.env.PUBLIC_URL;
  const PRIVATE_KEY = process.env.PRIVATE_KEY;
 +const HANDLE_RESOLVER_URL = process.env.HANDLE_RESOLVER_URL;
++const PLC_DIRECTORY_URL = process.env.PLC_DIRECTORY_URL;
  
  function getClientMetadata(): OAuthClientMetadataInput {
    if (PUBLIC_URL) {
-@@ -54,6 +55,7 @@ export async function getOAuthClient(): Promise<NodeOAuthClient> {
+@@ -54,6 +56,8 @@ export async function getOAuthClient(): Promise<NodeOAuthClient> {
  
    client = new NodeOAuthClient({
      clientMetadata: getClientMetadata(),
 +    handleResolver: HANDLE_RESOLVER_URL,
++    plcDirectoryUrl: PLC_DIRECTORY_URL,
      keyset: await getKeyset(),
  
      stateStore: {

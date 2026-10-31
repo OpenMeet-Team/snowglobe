@@ -15,7 +15,7 @@
 // the folder is left for a look, with the app's log and a screenshot of the step that failed.
 //
 // Needs Docker with compose, Node 20+, pnpm (corepack), git, network access to GitHub and npm,
-// and Linux with bubblewrap. The browser is Playwright's Chromium, installed into the copy;
+// and Linux, where the name router runs: the app and the browser reach the snowglobe by name. The browser is Playwright's Chromium, installed into the copy;
 // on a fresh Linux machine its system libraries come from `npx playwright install-deps chromium`.
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -41,6 +41,7 @@ for (const name of readdirSync(SRC)) if (!SKIP.has(name)) cpSync(join(SRC, name)
 symlinkSync(join(SRC, 'node_modules'), join(root, 'node_modules'));
 
 const { adoptOldNames, setting } = await import(join(root, 'lib/env.mjs'));
+const { localDomain } = await import(join(root, 'lib/config.mjs'));
 const given = { ...process.env };
 adoptOldNames({ root, env: given });
 for (const k of Object.keys(given)) if (/^(DEVNET|SNOWGLOBE)_/.test(k)) delete given[k];
@@ -51,8 +52,9 @@ const bind = env.SG_BIND;
 // The example's file, with the app on a port of its own.
 const file = readFileSync(join(root, 'docs/examples/statusphere.yml'), 'utf8');
 writeFileSync(join(root, 'snowglobe.yml'), file.replace('port: 3000', `port: ${APP_PORT}`));
-const domain = /^domain: *(\S+)/m.exec(file)[1];
 const globe = /^globe: *(\S+)/m.exec(file)[1];
+// The file's domain line if it has one, else the globe's own domain, as up gives it.
+const domain = /^domain: *(\S+)/m.exec(file)?.[1] ?? localDomain(globe);
 const APP = `https://statusphere.app.${domain}`;
 const PDS = `https://main.${domain}`;
 const alice = `alice.${domain}`;
@@ -169,9 +171,9 @@ try {
   must('the app answers at its https name', !!meta, 'no 200 in 4 minutes (app.log)');
   must('its OAuth client ID is its https name', json(meta).client_id === `${APP}/oauth-client-metadata.json`, json(meta).client_id);
 
-  // The browser maps the snowglobe's names to its address, as the proxy or a hosts entry would.
-  // It does not trust the snowglobe's CA (ignoreHTTPSErrors); a browser that does is in browser.md.
-  browser = await chromium.launch({ args: [`--host-resolver-rules=MAP ${domain} ${bind}, MAP *.${domain} ${bind}`] });
+  // The browser reaches the snowglobe as a person's would: public DNS sends its names to the name
+  // router. It does not trust the snowglobe's CA (ignoreHTTPSErrors); a browser that does is in browser.md.
+  browser = await chromium.launch();
   page = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
   page.setDefaultTimeout(30_000);
   const at = (host) => new RegExp(`^https://${host.replaceAll('.', '\\.')}/`);

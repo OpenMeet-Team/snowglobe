@@ -7,14 +7,13 @@
 # The whole thing, three PDSes, a relay and a lexicon authority:
 #   https://github.com/OpenMeet-Team/snowglobe/blob/main/docs/examples/atmo.yml
 
-globe: snowglobe
-domain: local.snowglobe.at     # every name below is under it
+globe: snowglobe               # every name below is under snowglobe.local.snowglobe.at, the globe's own domain
 
 pds:
-  - name: main                 # https://main.local.snowglobe.at
+  - name: main                 # https://main.snowglobe.local.snowglobe.at
     image: ghcr.io/bluesky-social/pds:0.4.5037    # a current release
-    bare_handles: true         # its handles are <account>.local.snowglobe.at
-  # A second PDS, with handles <name>.other.local.snowglobe.at. The relay crawls it too, so
+    bare_handles: true         # its handles are <account>.snowglobe.local.snowglobe.at
+  # A second PDS, with handles <name>.other.snowglobe.local.snowglobe.at. The relay crawls it too, so
   # Jetstream sees its writes.
   # - name: other
   #   image: ghcr.io/bluesky-social/pds:0.4.5009
@@ -28,7 +27,7 @@ pds:
 services:                      # these are the defaults, each true or false
   jetstream: true
   slingshot: true              # answers a handle's DID and PDS inside the network; needs jetstream
-  pdsls: true                  # https://pdsls.local.snowglobe.at, a browser for the network's records
+  pdsls: true                  # https://pdsls.snowglobe.local.snowglobe.at, a browser for the network's records
   tap: false                   # sends an app the events of one collection (true, or a map; see snowglobe.md above)
   # relay: auto                # auto: on with Jetstream, which reads it, or more than one PDS
 
@@ -37,7 +36,7 @@ services:                      # these are the defaults, each true or false
 #   authority: alpha
 #   publish: lexicons          # a folder next to this file; up publishes every lexicon in it
 
-# A group host runs beside the PDSes, at https://gh.local.snowglobe.at.
+# A group host runs beside the PDSes, at https://gh.snowglobe.local.snowglobe.at.
 # grouphosts:
 #   - name: gh
 #     kind: opensocial
@@ -47,7 +46,7 @@ accounts:                      # <name>@<pds>; up makes each one
   - alice@main
   - bob@main
 
-# Your app, reached at https://myapp.app.local.snowglobe.at, with settings from the snowglobe.
+# Your app, reached at https://myapp.app.snowglobe.local.snowglobe.at, with settings from the snowglobe.
 # `snowglobe env` hands them over. The names:
 #   https://github.com/OpenMeet-Team/snowglobe/blob/main/docs/your-app.md
 # apps:

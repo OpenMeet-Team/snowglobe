@@ -1,5 +1,5 @@
 # Written by snowglobe render from atmo.yml; render again instead of editing.
-# The https globe "snowglobe" at local.snowglobe.at: alpha, regular, prod.
+# The https globe "snowglobe" at snowglobe.local.snowglobe.at: alpha, regular, prod.
 # Run it with snowglobe up, which renders this file first.
 
 services:
@@ -76,7 +76,7 @@ services:
         condition: service_healthy
     environment:
       PDS_PORT: "3000"
-      PDS_HOSTNAME: alpha.local.snowglobe.at
+      PDS_HOSTNAME: alpha.snowglobe.local.snowglobe.at
       PDS_DATA_DIRECTORY: /pds/data
       PDS_BLOBSTORE_DISK_LOCATION: /pds/data/blocks
       PDS_DID_PLC_URL: http://plc:2582
@@ -91,16 +91,16 @@ services:
       PDS_JWT_SECRET: ${SG_PDS_JWT_SECRET:?snowglobe up makes it}
       PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${SG_PLC_ROTATION_KEY:?snowglobe up makes it}
       PDS_EMAIL_SMTP_URL: smtp://maildev:1025
-      PDS_EMAIL_FROM_ADDRESS: noreply@local.snowglobe.at
-      PDS_HANDLE_DOMAINS: .local.snowglobe.at
-      PDS_SERVICE_HANDLE_DOMAINS: .local.snowglobe.at
+      PDS_EMAIL_FROM_ADDRESS: noreply@snowglobe.local.snowglobe.at
+      PDS_HANDLE_DOMAINS: .snowglobe.local.snowglobe.at
+      PDS_SERVICE_HANDLE_DOMAINS: .snowglobe.local.snowglobe.at
       LOG_ENABLED: "true"
       NODE_ENV: development
-      PDS_SERVICE_DID: did:web:alpha.local.snowglobe.at
+      PDS_SERVICE_DID: did:web:alpha.snowglobe.local.snowglobe.at
       PDS_LEXICON_AUTHORITY_DID: ${SG_LEXICON_AUTHORITY_DID:-}
       PDS_DEV_MODE: "false"
       NODE_EXTRA_CA_CERTS: /https/ca.crt
-      SG_RESOLVE_DOMAIN: local.snowglobe.at
+      SG_RESOLVE_DOMAIN: snowglobe.local.snowglobe.at
       NODE_OPTIONS: --require /https/app-names.cjs
     volumes:
       - pds-alpha-data:/pds/data
@@ -127,7 +127,7 @@ services:
         condition: service_healthy
     environment:
       PDS_PORT: "3000"
-      PDS_HOSTNAME: regular.local.snowglobe.at
+      PDS_HOSTNAME: regular.snowglobe.local.snowglobe.at
       PDS_DATA_DIRECTORY: /pds/data
       PDS_BLOBSTORE_DISK_LOCATION: /pds/data/blocks
       PDS_DID_PLC_URL: http://plc:2582
@@ -142,16 +142,16 @@ services:
       PDS_JWT_SECRET: ${SG_PDS_JWT_SECRET:?snowglobe up makes it}
       PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${SG_PLC_ROTATION_KEY:?snowglobe up makes it}
       PDS_EMAIL_SMTP_URL: smtp://maildev:1025
-      PDS_EMAIL_FROM_ADDRESS: noreply@local.snowglobe.at
-      PDS_HANDLE_DOMAINS: .regular.local.snowglobe.at
-      PDS_SERVICE_HANDLE_DOMAINS: .regular.local.snowglobe.at
+      PDS_EMAIL_FROM_ADDRESS: noreply@snowglobe.local.snowglobe.at
+      PDS_HANDLE_DOMAINS: .regular.snowglobe.local.snowglobe.at
+      PDS_SERVICE_HANDLE_DOMAINS: .regular.snowglobe.local.snowglobe.at
       LOG_ENABLED: "true"
       NODE_ENV: development
-      PDS_SERVICE_DID: did:web:regular.local.snowglobe.at
+      PDS_SERVICE_DID: did:web:regular.snowglobe.local.snowglobe.at
       PDS_LEXICON_AUTHORITY_DID: ${SG_LEXICON_AUTHORITY_DID:-}
       PDS_DEV_MODE: "false"
       NODE_EXTRA_CA_CERTS: /https/ca.crt
-      SG_RESOLVE_DOMAIN: local.snowglobe.at
+      SG_RESOLVE_DOMAIN: snowglobe.local.snowglobe.at
       NODE_OPTIONS: --require /https/app-names.cjs
     volumes:
       - pds-regular-data:/pds/data
@@ -178,7 +178,7 @@ services:
         condition: service_healthy
     environment:
       PDS_PORT: "3000"
-      PDS_HOSTNAME: prod.local.snowglobe.at
+      PDS_HOSTNAME: prod.snowglobe.local.snowglobe.at
       PDS_DATA_DIRECTORY: /pds/data
       PDS_BLOBSTORE_DISK_LOCATION: /pds/data/blocks
       PDS_DID_PLC_URL: http://plc:2582
@@ -193,16 +193,16 @@ services:
       PDS_JWT_SECRET: ${SG_PDS_JWT_SECRET:?snowglobe up makes it}
       PDS_PLC_ROTATION_KEY_K256_PRIVATE_KEY_HEX: ${SG_PLC_ROTATION_KEY:?snowglobe up makes it}
       PDS_EMAIL_SMTP_URL: smtp://maildev:1025
-      PDS_EMAIL_FROM_ADDRESS: noreply@local.snowglobe.at
-      PDS_HANDLE_DOMAINS: .prod.local.snowglobe.at
-      PDS_SERVICE_HANDLE_DOMAINS: .prod.local.snowglobe.at
+      PDS_EMAIL_FROM_ADDRESS: noreply@snowglobe.local.snowglobe.at
+      PDS_HANDLE_DOMAINS: .prod.snowglobe.local.snowglobe.at
+      PDS_SERVICE_HANDLE_DOMAINS: .prod.snowglobe.local.snowglobe.at
       LOG_ENABLED: "true"
       NODE_ENV: development
-      PDS_SERVICE_DID: did:web:prod.local.snowglobe.at
+      PDS_SERVICE_DID: did:web:prod.snowglobe.local.snowglobe.at
       PDS_LEXICON_AUTHORITY_DID: ${SG_LEXICON_AUTHORITY_DID:-}
       PDS_DEV_MODE: "false"
       NODE_EXTRA_CA_CERTS: /https/ca.crt
-      SG_RESOLVE_DOMAIN: local.snowglobe.at
+      SG_RESOLVE_DOMAIN: snowglobe.local.snowglobe.at
       NODE_OPTIONS: --require /https/app-names.cjs
     volumes:
       - pds-prod-data:/pds/data
@@ -266,7 +266,7 @@ services:
         condition: service_healthy
     environment:
       RELAY_ADMIN_PASSWORD: ${SG_RELAY_ADMIN_PASSWORD:?snowglobe up makes it}
-      RELAY_HOSTS: alpha.local.snowglobe.at regular.local.snowglobe.at prod.local.snowglobe.at
+      RELAY_HOSTS: alpha.snowglobe.local.snowglobe.at regular.snowglobe.local.snowglobe.at prod.snowglobe.local.snowglobe.at
     entrypoint: /bin/sh
     command:
       - -c
@@ -327,11 +327,11 @@ services:
       - ./stack/init:/scripts:ro
       - /state/snowglobe/snowglobe:/devnet-data
     environment:
-      PDS_HOSTNAME: alpha.local.snowglobe.at
+      PDS_HOSTNAME: alpha.snowglobe.local.snowglobe.at
       PDS_ADMIN_PASSWORD: ${SG_PDS_ADMIN_PASSWORD:?snowglobe up makes it}
-      HANDLE_DOMAIN: .local.snowglobe.at
+      HANDLE_DOMAIN: .snowglobe.local.snowglobe.at
       SEED_ACCOUNTS: ${SG_SEED_ACCOUNTS:-${DEVNET_SEED_ACCOUNTS:-true}}
-      SG_DOMAIN: local.snowglobe.at
+      SG_DOMAIN: snowglobe.local.snowglobe.at
     entrypoint: /bin/sh
     command:
       - -c
@@ -356,7 +356,7 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
     environment:
-      SG_DOMAIN: local.snowglobe.at
+      SG_DOMAIN: snowglobe.local.snowglobe.at
       NGINX_ENVSUBST_FILTER: ^SG_
     volumes:
       - ./stack/https/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
@@ -370,9 +370,9 @@ services:
     networks:
       snowglobe:
         aliases:
-          - alpha.local.snowglobe.at
-          - regular.local.snowglobe.at
-          - prod.local.snowglobe.at
+          - alpha.snowglobe.local.snowglobe.at
+          - regular.snowglobe.local.snowglobe.at
+          - prod.snowglobe.local.snowglobe.at
     healthcheck:
       test:
         - CMD
@@ -387,7 +387,7 @@ services:
     image: snowglobe-dns:6fb1e99ad6c9
     restart: unless-stopped
     environment:
-      SG_DOMAIN: local.snowglobe.at
+      SG_DOMAIN: snowglobe.local.snowglobe.at
     dns:
       - 127.0.0.1
     depends_on:
@@ -438,7 +438,7 @@ services:
       nginx:
         condition: service_healthy
     environment:
-      PROXY_DOMAIN: local.snowglobe.at
+      PROXY_DOMAIN: snowglobe.local.snowglobe.at
       PROXY_UPSTREAM: nginx:443
     ports:
       - ${SG_BIND:-127.0.0.1}:${SG_PROXY_PORT:-1080}:1080
@@ -463,11 +463,11 @@ services:
       nginx:
         condition: service_healthy
     environment:
-      PDSLS_PUBLIC_URL: https://pdsls.local.snowglobe.at
-      PDSLS_DOMAIN: local.snowglobe.at
-      PDSLS_PLC_URL: https://plc.local.snowglobe.at
-      PDSLS_JETSTREAM_URL: wss://jetstream.local.snowglobe.at/subscribe
-      PDSLS_FIREHOSE_URL: wss://relay.local.snowglobe.at
+      PDSLS_PUBLIC_URL: https://pdsls.snowglobe.local.snowglobe.at
+      PDSLS_DOMAIN: snowglobe.local.snowglobe.at
+      PDSLS_PLC_URL: https://plc.snowglobe.local.snowglobe.at
+      PDSLS_JETSTREAM_URL: wss://jetstream.snowglobe.local.snowglobe.at/subscribe
+      PDSLS_FIREHOSE_URL: wss://relay.snowglobe.local.snowglobe.at
       PDSLS_LEXICON_AUTHORITY: ${SG_LEXICON_AUTHORITY_DID:-}
       PDSLS_UPSTREAM: nginx:443
       NODE_EXTRA_CA_CERTS: /https/ca.crt

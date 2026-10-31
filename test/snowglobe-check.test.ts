@@ -91,7 +91,9 @@ describe('the rules behind the check', () => {
   it('fills in the defaults', () => {
     const { globe, errors } = checkGlobe(ok());
     expect(errors).toEqual([]);
-    expect(globe.domain).toBe('local.snowglobe.at');
+    // A domain of its own, so the name router tells it from every other snowglobe.
+    expect(globe.domain).toBe('mine.local.snowglobe.at');
+    expect(checkGlobe(ok({ domain: 'local.snowglobe.at' })).globe.domain).toBe('local.snowglobe.at');
     expect(globe.pds[0].image).toContain('@sha256:');
     expect(globe.pds[0].invites).toBe('open');
     expect(globe.services.relay).toBe(true); // one PDS, but Jetstream reads a relay
@@ -163,7 +165,7 @@ describe('the rules behind the check', () => {
 
   it('names the handle each account gets, and refuses one listed twice', () => {
     const { globe } = checkGlobe({ globe: 'mine', pds: [BARE_A, PDS_B], accounts: ['alice@alpha', 'bob@beta'] });
-    expect(globe.accounts.map((a: { handle: string }) => a.handle)).toEqual(['alice.local.snowglobe.at', 'bob.beta.local.snowglobe.at']);
+    expect(globe.accounts.map((a: { handle: string }) => a.handle)).toEqual(['alice.mine.local.snowglobe.at', 'bob.beta.mine.local.snowglobe.at']);
     expect(whereOf({ globe: 'mine', pds: [BARE_A, PDS_B], accounts: ['bob@beta', 'bob@beta', 'carol@alpha'] })).toEqual(['accounts[1]']);
   });
 

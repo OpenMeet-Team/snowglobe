@@ -13,7 +13,7 @@
 //   app       routes https://<name>.app.<domain> to a port on this machine
 //   up        brings the globe up, as the compose project named for its file (or <name>, -f <file>)
 //   down      stops it (the same ways)
-//   run       runs a command with the app's settings, and plc.directory pointed at the snowglobe
+//   run       runs a command with the app's settings and the snowglobe's CA
 //
 // A snowglobe is the snowglobe.yml in the folder you are in or the nearest one above (else
 // SG_FILE, else the default). Its state is kept per user, not in a checkout: ~/.local/share/
