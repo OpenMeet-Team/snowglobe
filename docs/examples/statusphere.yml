@@ -24,4 +24,5 @@ apps:
     env:
       PUBLIC_URL: ${apps.statusphere.url}
       HANDLE_RESOLVER_URL: ${pds.main.url}
+      PLC_DIRECTORY_URL: ${services.plc.url}
       TAP_URL: ${services.tap.url}

@@ -15,7 +15,7 @@
 // the folder is left for a look, with the app's log and a screenshot of the step that failed.
 //
 // Needs Docker with compose, Node 20+, pnpm (corepack), git, network access to GitHub and npm,
-// and Linux with bubblewrap. The browser is Playwright's Chromium, installed into the copy;
+// and Linux, where the name router runs: the app and the browser reach the snowglobe by name. The browser is Playwright's Chromium, installed into the copy;
 // on a fresh Linux machine its system libraries come from `npx playwright install-deps chromium`.
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -169,9 +169,9 @@ try {
   must('the app answers at its https name', !!meta, 'no 200 in 4 minutes (app.log)');
   must('its OAuth client ID is its https name', json(meta).client_id === `${APP}/oauth-client-metadata.json`, json(meta).client_id);
 
-  // The browser maps the snowglobe's names to its address, as the proxy or a hosts entry would.
-  // It does not trust the snowglobe's CA (ignoreHTTPSErrors); a browser that does is in browser.md.
-  browser = await chromium.launch({ args: [`--host-resolver-rules=MAP ${domain} ${bind}, MAP *.${domain} ${bind}`] });
+  // The browser reaches the snowglobe as a person's would: public DNS sends its names to the name
+  // router. It does not trust the snowglobe's CA (ignoreHTTPSErrors); a browser that does is in browser.md.
+  browser = await chromium.launch();
   page = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
   page.setDefaultTimeout(30_000);
   const at = (host) => new RegExp(`^https://${host.replaceAll('.', '\\.')}/`);

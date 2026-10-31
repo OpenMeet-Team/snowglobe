@@ -38,7 +38,7 @@ the app the events of `xyz.statusphere.status` at the app's `/api/webhook`; the 
 (`http://127.0.0.1:2480` with the default `SG_BIND`; `SG_BIND` changes the address and `SG_TAP_PORT` the port). `snowglobe check` refuses a webhook
 that names an app the file does not have.
 
-## Two changes to the app
+## Three changes to the app
 
 Run `snowglobe up`, then in a clone of the app (the same changes as a patch:
 [`statusphere.patch`](statusphere.patch), for `git apply`):
@@ -47,10 +47,12 @@ Run `snowglobe up`, then in a clone of the app (the same changes as a patch:
 --- a/lib/auth/client.ts
 +++ b/lib/auth/client.ts
 +const HANDLE_RESOLVER_URL = process.env.HANDLE_RESOLVER_URL;
++const PLC_DIRECTORY_URL = process.env.PLC_DIRECTORY_URL;
  ...
    client = new NodeOAuthClient({
      clientMetadata: getClientMetadata(),
 +    handleResolver: HANDLE_RESOLVER_URL,
++    plcDirectoryUrl: PLC_DIRECTORY_URL,
 --- a/next.config.ts
 +++ b/next.config.ts
 -  allowedDevOrigins: ["127.0.0.1"],
@@ -61,9 +63,11 @@ Run `snowglobe up`, then in a clone of the app (the same changes as a patch:
 ```
 
 - **The handle resolver.** The OAuth library looks a handle up with a fetch that refuses loopback
-  addresses, and under `snowglobe run` every snowglobe name is one. Pointing it at the PDS, which
-  answers for its own handles, avoids that. Nothing else resolves differently: the app reaches
-  `plc.directory` under `snowglobe run`, and that name goes to the snowglobe's PLC.
+  addresses, and every snowglobe name is one (127.0.0.1, where the name router listens). Pointing it
+  at the PDS, which answers for its own handles, avoids that.
+- **The PLC directory.** The library looks DIDs up at `plc.directory` unless told otherwise, and that is
+  the real directory, which has never heard of the snowglobe's accounts. `PLC_DIRECTORY_URL` points it
+  at the snowglobe's own (`${services.plc.url}`), as an app on a hosted snowglobe has to do too.
 - **The allowed host.** Next's dev server refuses requests for a host it does not know, which leaves
   the page's scripts unloaded and the login button disabled. The app's own name has to be on the list.
   This is a Next dev-server setting, so it applies to any Next app on an app route.

@@ -62,7 +62,7 @@ function globeRoot() {
       `echo "$*" >> ${join(r, 'docker.log')}`,
       'case "$*" in',
       `  *'ps -a --format'*) echo 'exited 0';;`,
-      `  'inspect -f {{.State.Running}} snowglobe-router') [ -f ${up} ] && echo true && exit 0;;`,
+      `  'inspect -f '*' snowglobe-router') [ -f ${up} ] && echo 'true|' && exit 0;;`,
       `  'run -d --name snowglobe-router'*) touch ${up};;`,
       `  'rm -f snowglobe-router') rm -f ${up};;`,
       `  *'com.docker.compose.project=other'*) echo 0123abcd; exit 0;;`,
@@ -173,7 +173,8 @@ describe('the name router', () => {
     const r = globeRoot();
     // nginx never answers at 127.77.0.9, so up stops at the wait after the router step.
     sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0', SG_NGINX_WAIT: '1' });
-    expect(readFileSync(routes(r, 'four'), 'utf8')).toBe('four.test 127.77.0.9 mine\n');
+    // Keyed by the compose project, which is what is unique on a machine.
+    expect(readFileSync(routes(r, 'mine'), 'utf8')).toBe('four.test 127.77.0.9 four\n');
     const conf = readFileSync(join(r, '.local/share/snowglobe/.router/nginx.conf'), 'utf8');
     expect(conf).toContain('.four.test 127.77.0.9:443;');
     const log = dockerLog(r).split('\n');
@@ -189,10 +190,11 @@ describe('the name router', () => {
     writeFileSync(routes(r, 'other'), 'four.test 127.0.0.3 other\n');
     const res = sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0' });
     expect(res.status).toBe(1);
-    expect(res.stderr).toContain('snowglobe down other');
+    expect(res.stderr).toContain('compose project other');
     expect(dockerLog(r)).not.toContain('compose -p');
-    // Once other is down (no nginx of its own up), its stale route is no bar.
-    writeFileSync(routes(r, 'other'), 'four.test 127.0.0.3 gone\n');
+    // A route whose project has no nginx up is stale, and no bar.
+    unlinkSync(routes(r, 'other'));
+    writeFileSync(routes(r, 'gone'), 'four.test 127.0.0.3 gone\n');
     sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0', SG_NGINX_WAIT: '1' });
     expect(dockerLog(r)).toContain('compose -p mine');
   });
@@ -201,7 +203,7 @@ describe('the name router', () => {
     const r = globeRoot();
     const res = sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0', SG_NGINX_WAIT: '1', SG_BIND: '127.0.0.1' });
     expect(res.stderr).toContain('the name router\'s address');
-    expect(existsSync(routes(r, 'four'))).toBe(false);
+    expect(existsSync(routes(r, 'mine'))).toBe(false);
     expect(dockerLog(r)).not.toContain('snowglobe-router');
   });
 

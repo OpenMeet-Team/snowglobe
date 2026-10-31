@@ -15,13 +15,14 @@ const B = { globe: 'mvpb', domain: 'mvpb.local.snowglobe.at', bind: '127.0.0.7',
 const OLD = { globe: 'atmogroups', domain: 'local.snowglobe.at', bind: '127.0.0.4', project: 'atmogroups' };
 
 // A docker that records each call and answers inspect with `state` ('running', 'stopped' or
-// 'missing'); after run or start the router is running, unless `stays` is false.
-function fakeDocker(state: string, { stays = true } = {}) {
+// 'missing') and the folder the router reads (`dir`, none by default); after run or start the
+// router is running, unless `stays` is false.
+function fakeDocker(state: string, { stays = true, dir = '' } = {}) {
   const calls: string[][] = [];
   let now = state;
   const docker = (args: string[]) => {
     calls.push(args);
-    if (args[0] === 'inspect') return now === 'missing' ? { status: 1, stdout: '', stderr: 'No such object' } : { status: 0, stdout: now === 'running' ? 'true\n' : 'false\n' };
+    if (args[0] === 'inspect') return now === 'missing' ? { status: 1, stdout: '', stderr: 'No such object' } : { status: 0, stdout: `${now === 'running'}|${dir}\n` };
     if (args[0] === 'run' || args[0] === 'start') now = stays ? 'running' : 'stopped';
     if (args[0] === 'rm') now = 'missing';
     return { status: 0, stdout: '', stderr: '' };
@@ -35,6 +36,7 @@ describe('routes', () => {
     writeRoute(d, B);
     writeRoute(d, A);
     expect(readRoutes(d)).toEqual([A, B]);
+    // One file per compose project, naming the globe.
     expect(readFileSync(join(d, 'routes', 'mvpa'), 'utf8')).toBe('mvpa.local.snowglobe.at 127.0.0.6 mvpa\n');
     expect(dropRoute(d, 'mvpa')).toBe(true);
     expect(dropRoute(d, 'mvpa')).toBe(false);
@@ -90,7 +92,9 @@ describe('syncRouter', () => {
     writeRoute(d, B);
     const running = fakeDocker('running');
     await syncRouter({ dir: d, docker: running.docker, wait: 0 });
-    expect(running.calls).toEqual([['inspect', '-f', '{{.State.Running}}', ROUTER_CONTAINER], ['exec', ROUTER_CONTAINER, 'nginx', '-s', 'reload']]);
+    expect(running.verbs()).toEqual(['inspect', 'exec']);
+    expect(running.calls[0].at(-1)).toBe(ROUTER_CONTAINER);
+    expect(running.calls[1]).toEqual(['exec', ROUTER_CONTAINER, 'nginx', '-s', 'reload']);
     expect(readFileSync(join(d, 'nginx.conf'), 'utf8')).toContain('.mvpb.local.snowglobe.at');
     const stopped = fakeDocker('stopped');
     await syncRouter({ dir: d, docker: stopped.docker, wait: 0 });
@@ -105,6 +109,17 @@ describe('syncRouter', () => {
     const missing = fakeDocker('missing');
     await syncRouter({ dir: d, docker: missing.docker, wait: 0 });
     expect(missing.verbs()).toEqual(['inspect']);
+  });
+
+  it('refuses a running router that reads another folder: it would never see these routes', async () => {
+    const d = dir();
+    writeRoute(d, A);
+    const same = fakeDocker('running', { dir: d });
+    await syncRouter({ dir: d, docker: same.docker, wait: 0 });
+    expect(same.verbs()).toEqual(['inspect', 'exec']);
+    const other = fakeDocker('running', { dir: '/home/someone/.local/share/snowglobe/.router' });
+    await expect(syncRouter({ dir: d, docker: other.docker, wait: 0 })).rejects.toThrow(/another HOME/);
+    expect(other.verbs()).toEqual(['inspect']);
   });
 
   it('says where to look when the router does not stay up, as when something else holds 127.0.0.1:443', async () => {
