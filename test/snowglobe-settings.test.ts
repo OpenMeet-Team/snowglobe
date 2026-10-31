@@ -72,12 +72,12 @@ describe('the value names', () => {
     const { globe: d } = loadGlobe(join(ROOT, 'docs/examples/atmo.yml'));
     const v = (n: string) => lookup(d, n).value;
     expect([v('pds.alpha.url'), v('pds.alpha.did'), v('accounts.alice.handle'), v('accounts.alice.pds'), v('services.relay.ws'), v('lexicons.authority.handle')]).toEqual([
-      'https://alpha.local.snowglobe.at',
-      'did:web:alpha.local.snowglobe.at',
-      'alice.local.snowglobe.at',
-      'https://alpha.local.snowglobe.at',
-      'wss://relay.local.snowglobe.at',
-      'lex-authority.local.snowglobe.at',
+      'https://alpha.snowglobe.local.snowglobe.at',
+      'did:web:alpha.snowglobe.local.snowglobe.at',
+      'alice.snowglobe.local.snowglobe.at',
+      'https://alpha.snowglobe.local.snowglobe.at',
+      'wss://relay.snowglobe.local.snowglobe.at',
+      'lex-authority.snowglobe.local.snowglobe.at',
     ]);
   });
 

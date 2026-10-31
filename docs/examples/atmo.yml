@@ -6,19 +6,18 @@
 # To add a group host (the opensocial.group proposal's atproto-group-host, built from a checkout):
 #
 # grouphosts:
-#   - name: gh                         # https://gh.local.snowglobe.at, handles <group>.gh.local.snowglobe.at
+#   - name: gh                         # https://gh.snowglobe.local.snowglobe.at, handles <group>.gh.snowglobe.local.snowglobe.at
 #     kind: opensocial
 #     build: ../atproto-group-host     # a folder with a Dockerfile, from this file's folder
 
-globe: snowglobe
-domain: local.snowglobe.at     # every name below is under it
+globe: snowglobe               # every name below is under snowglobe.local.snowglobe.at, the globe's own domain
 
 pds:
-  - name: alpha                # https://alpha.local.snowglobe.at
+  - name: alpha                # https://alpha.snowglobe.local.snowglobe.at
     image: spaces-alpha        # the permissioned-spaces alpha, pinned by digest
-    bare_handles: true         # its handles are <account>.local.snowglobe.at
+    bare_handles: true         # its handles are <account>.snowglobe.local.snowglobe.at
     invites: required
-  - name: regular              # a current release; handles <name>.regular.local.snowglobe.at
+  - name: regular              # a current release; handles <name>.regular.snowglobe.local.snowglobe.at
     image: ghcr.io/bluesky-social/pds:0.4.5037
   - name: prod                 # OpenMeet's production build (the 0.4.5009 release)
     image: ghcr.io/bluesky-social/pds@sha256:1fa8bbceabb65d8e1710749b1ea92c1c20a7489ca38da4a0a5f64c0c10a70c29
@@ -32,7 +31,7 @@ services:
   pdsls: true
 
 lexicons:
-  authority: alpha             # lex-authority.local.snowglobe.at, which every PDS resolves NSIDs from
+  authority: alpha             # lex-authority.snowglobe.local.snowglobe.at, which every PDS resolves NSIDs from
 
 accounts:
   - alice@alpha

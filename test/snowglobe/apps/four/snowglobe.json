@@ -33,7 +33,7 @@
       "PLC directory",
       "plc",
       "plc",
-      "Resolves each did:plc to its keys and PDS; also plc.directory under snowglobe run"
+      "Resolves each did:plc to its keys and PDS"
     ],
     [
       "Relay",

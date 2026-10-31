@@ -1,6 +1,6 @@
 {
   "globe": "snowglobe",
-  "domain": "local.snowglobe.at",
+  "domain": "snowglobe.local.snowglobe.at",
   "about": "An atproto network on this machine: its own PDSs, PLC directory, relay and Jetstream. Its accounts live in its own directory, not the public one, so Bluesky cannot find anything here. An app is handed this network's addresses (snowglobe env), not Bluesky's.",
   "accountsNote": "Every account on the network, on each of its 3 PDSs.",
   "feed": "/subscribe",
@@ -9,25 +9,25 @@
       "PDS",
       "alpha",
       "alpha",
-      "Handles under local.snowglobe.at, by invite (spaces-alpha)"
+      "Handles under snowglobe.local.snowglobe.at, by invite (spaces-alpha)"
     ],
     [
       "PDS",
       "regular",
       "regular",
-      "Handles under regular.local.snowglobe.at (pds:0.4.5037)"
+      "Handles under regular.snowglobe.local.snowglobe.at (pds:0.4.5037)"
     ],
     [
       "PDS",
       "prod",
       "prod",
-      "Handles under prod.local.snowglobe.at (pds@sha256:1fa8bbceabb6…)"
+      "Handles under prod.snowglobe.local.snowglobe.at (pds@sha256:1fa8bbceabb6…)"
     ],
     [
       "PLC directory",
       "plc",
       "plc",
-      "Resolves each did:plc to its keys and PDS; also plc.directory under snowglobe run"
+      "Resolves each did:plc to its keys and PDS"
     ],
     [
       "Relay",
@@ -77,7 +77,7 @@
   "apps": [
     {
       "name": "pdsls",
-      "url": "https://pdsls.local.snowglobe.at"
+      "url": "https://pdsls.snowglobe.local.snowglobe.at"
     }
   ]
 }

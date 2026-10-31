@@ -1,12 +1,12 @@
 // Probe the https snowglobe the way an app built for the real network meets it: stock
-// atcute, its default PLC directory, and no plain-http escape hatch anywhere. Run it
-// under bin/snowglobe.mjs run, which maps the names and trusts the snowglobe CA, after
-// routing the probe's app name to its port:
+// atcute, told only the snowglobe's PLC directory (a setting, as an app is told on a hosted
+// globe), and no plain-http escape hatch anywhere. Run it under bin/snowglobe.mjs run, which
+// trusts the snowglobe CA, after routing the probe's app name to its port:
 //
 //   bin/snowglobe.mjs app probe 5480
 //   ATCUTE_DIR=<dir> PROBE_DID=<did> bin/snowglobe.mjs run node scripts/https-probe.mjs
 //
-// (a) Resolves PROBE_DID through https://plc.directory (atcute's default
+// (a) Resolves PROBE_DID through the snowglobe's PLC (services.plc.url, given to atcute's
 //     PlcDidDocumentResolver), then the PDS's protected-resource and authorization
 //     server metadata through atcute's resolvers, left at their defaults.
 // (b) Serves a confidential client's metadata and JWKS on PROBE_CLIENT_PORT, which nginx
@@ -23,7 +23,7 @@
 //   PROBE_DID          the account to resolve and name in the PAR (default: the lexicon
 //                      authority, lexicons.authority.did from snowglobe's settings)
 //   PROBE_PDS          the PDS that DID must name (default https://alpha.<domain>, the
-//                      domain being the snowglobe.yml's, else local.snowglobe.at)
+//                      domain being the snowglobe's)
 //   PROBE_APP          the app name (default probe: https://probe.app.<domain>/)
 //   PROBE_CLIENT_PORT  where the client's documents are served (default 5480)
 //   PROBE_CLIENT_HOST  the address to serve on (default: the docker0 address, which is
@@ -53,6 +53,7 @@ const fact = (name) => {
 	}
 };
 const DOMAIN = fact('domain');
+const PLC = fact('services.plc.url');
 const PDS = process.env.PROBE_PDS ?? `https://alpha.${DOMAIN}`;
 const APP = process.env.PROBE_APP ?? 'probe';
 const SITE = `https://${APP}.app.${DOMAIN}`;
@@ -96,11 +97,10 @@ const fail = (what, e) => {
 	console.log(`FAIL ${what}: ${e instanceof Error ? e.message : String(e)}`);
 };
 
-// (a) DID -> PDS -> protected resource -> authorization server, atcute's defaults.
+// (a) DID -> PDS -> protected resource -> authorization server, atcute's defaults but the PLC.
 let asMetadata;
 try {
-	const plc = new identity.PlcDidDocumentResolver();
-	if (plc.apiUrl !== 'https://plc.directory') throw new Error(`PLC is ${plc.apiUrl}`);
+	const plc = new identity.PlcDidDocumentResolver({ apiUrl: PLC });
 	const doc = await plc.resolve(did);
 	const pds = doc.service?.find((s) => s.id === '#atproto_pds' || s.id === `${did}#atproto_pds`);
 	if (pds?.serviceEndpoint !== PDS) throw new Error(`DID doc names PDS ${pds?.serviceEndpoint}`);
@@ -114,7 +114,7 @@ try {
 	if (pr.resource !== PDS) throw new Error(`resource is ${pr.resource}`);
 	asMetadata = await asResolver.resolve(pr.authorization_servers[0]);
 	if (asMetadata.issuer !== PDS) throw new Error(`issuer is ${asMetadata.issuer}`);
-	console.log(`RESOLVED ${did} on ${PDS} through plc.directory, ${HTTP_KNOB} off`);
+	console.log(`RESOLVED ${did} on ${PDS} through ${PLC}, ${HTTP_KNOB} off`);
 } catch (e) {
 	fail('resolve', e);
 }
@@ -135,7 +135,7 @@ const actorResolver = new identity.LocalActorResolver({
 	}),
 	didDocumentResolver: new identity.CompositeDidDocumentResolver({
 		methods: {
-			plc: new identity.PlcDidDocumentResolver(),
+			plc: new identity.PlcDidDocumentResolver({ apiUrl: PLC }),
 			web: new identity.WebDidDocumentResolver()
 		}
 	})

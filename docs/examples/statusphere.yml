@@ -1,8 +1,7 @@
 # The Statusphere example (docs/examples/statusphere.md): the default snowglobe, Tap sending the app
 # its statuses, and the app. scripts/statusphere.mjs runs the whole flow against this file in CI.
 
-globe: statusphere
-domain: local.snowglobe.at
+globe: statusphere             # every name is under statusphere.local.snowglobe.at, the globe's own domain
 
 pds:
   - name: main

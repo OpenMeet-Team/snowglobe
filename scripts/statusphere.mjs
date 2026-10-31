@@ -41,6 +41,7 @@ for (const name of readdirSync(SRC)) if (!SKIP.has(name)) cpSync(join(SRC, name)
 symlinkSync(join(SRC, 'node_modules'), join(root, 'node_modules'));
 
 const { adoptOldNames, setting } = await import(join(root, 'lib/env.mjs'));
+const { localDomain } = await import(join(root, 'lib/config.mjs'));
 const given = { ...process.env };
 adoptOldNames({ root, env: given });
 for (const k of Object.keys(given)) if (/^(DEVNET|SNOWGLOBE)_/.test(k)) delete given[k];
@@ -51,8 +52,9 @@ const bind = env.SG_BIND;
 // The example's file, with the app on a port of its own.
 const file = readFileSync(join(root, 'docs/examples/statusphere.yml'), 'utf8');
 writeFileSync(join(root, 'snowglobe.yml'), file.replace('port: 3000', `port: ${APP_PORT}`));
-const domain = /^domain: *(\S+)/m.exec(file)[1];
 const globe = /^globe: *(\S+)/m.exec(file)[1];
+// The file's domain line if it has one, else the globe's own domain, as up gives it.
+const domain = /^domain: *(\S+)/m.exec(file)?.[1] ?? localDomain(globe);
 const APP = `https://statusphere.app.${domain}`;
 const PDS = `https://main.${domain}`;
 const alice = `alice.${domain}`;

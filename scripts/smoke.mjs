@@ -15,7 +15,7 @@
 // globe: SG_BIND and SG_DOMAIN come from the environment or the copied .env if set there,
 // else 127.0.0.3 and the default file's domain, and the steps on snowglobe env check they were used.
 // The copy is taken down with -v at the end whatever happened; its folder is left for a look.
-// The snowglobe has a domain of its own (the atmo example's file, less its domain line), which
+// The snowglobe has a domain of its own (the atmo example's file, less any domain line), which
 // the name router reaches by name; the router is the machine's, shared with your own snowglobes.
 //
 // Needs Docker with compose and Node 20+. The steps that reach names need the name router, which
