@@ -2,6 +2,24 @@
 
 Changes to the default stack that existing setups will notice:
 
+## Unreleased
+
+- **Signing in through PDSls works.** PDSls's Add account failed with "Unable to obtain client
+  metadata ... Connection refused": inside a PDS only names under `app.<domain>` led to nginx, so
+  `pdsls.<domain>` led to `127.0.0.1`, the PDS's own container. Each PDS now sends every name under
+  the domain to nginx, as a group host already did. You can now sign in to PDSls, or make a new
+  account in the browser: type the PDS's address, such as `https://main.local.snowglobe.at`, in
+  place of a handle, and choose Create a new account. `up` picks up the change.
+- **The network page shows Mail as up.** MailDev 3.0.0, the image `latest` pointed at from
+  2026-09-23, moved its health check to `/api/healthz`, so the page's check got a 404 and showed
+  Mail down, though mail was caught as before. The page asks the new path, and MailDev is pinned to
+  3.0.0 so a new release can't move it again unnoticed.
+- **`up` restarts nginx when the network page or its config changed.** nginx mounts them one file
+  at a time and keeps the copy it started with, so after an upgrade a running snowglobe kept the
+  old page and the old health checks until nginx restarted. `up` already did this for nginx's
+  template; it now covers `stack/page/snowglobe.conf` and `stack/page/index.html` too, so the
+  first `up` after this upgrade restarts nginx once.
+
 ## v0.4.0 (2026-10-30)
 
 - **A new install makes its CA.** Installed where npm resolves the dependencies afresh, as in CI
