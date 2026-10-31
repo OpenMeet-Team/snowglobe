@@ -131,8 +131,8 @@ __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=atmo.app.snowglobe.local.snowglobe.at \
 ```
 
 - `--host` replaces the `127.0.0.1` in atmo's `vite.config.ts`. Use the address that
-  `host.docker.internal` has inside the containers; here it is the `docker0` address. Check with
-  `docker exec <project>-nginx-1 getent hosts host.docker.internal`.
+  `host.docker.internal` has inside the containers, usually the `docker0` address. `172.18.0.1` above
+  is an example. Check yours with `docker exec <project>-nginx-1 getent hosts host.docker.internal`.
 - `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` lets vite answer requests for `atmo.app.snowglobe.local.snowglobe.at`.
 
 Open `https://atmo.app.snowglobe.local.snowglobe.at` in the browser set up above, or from the network's page at
@@ -211,7 +211,7 @@ unset ACCOUNTS_FILE
 snowglobe invite E2E_INVITE_CODE data/atmo-e2e.env   # each run mints its group with one use
 # what the test reads: URLs, DIDs, the handle domain and where the secrets are; no secret
 { grep -E '^E2E_[A-Z]+_DID=' data/atmo-e2e.env
-  snowglobe env --dotenv --app atmo | grep -E '^E2E_(PDS|PLC_URL|HANDLE_DOMAIN)='   # needs an `atmo` entry under `apps:` with an `env:` that maps these three; atmo.yml does not have one yet
+  snowglobe env --dotenv --app atmo | grep -E '^E2E_(PDS|PLC_URL|HANDLE_DOMAIN)='   # needs an `atmo` entry under `apps:` whose `env:` maps these three; add one to your copy of atmo.yml
   echo "E2E_CREDENTIALS=$PWD/data/atmo-e2e.env"; } > data/atmo-e2e.fixtures.env
 ```
 

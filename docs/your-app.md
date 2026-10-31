@@ -94,9 +94,9 @@ use the pieces described further down.
 What happens at sign-in: the app's OAuth `client_id` is a URL on `myapp.app.myapp.local.snowglobe.at`. The
 PDS, which runs in Docker, fetches the app's client metadata from that URL over https. That works
 because step 2 routed the name to your dev server. The PDS then shows its sign-in and consent pages
-at `https://main.myapp.local.snowglobe.at`, and sends the browser back to the app. This outline has not
-been run as a whole. Each piece is in the sections below, and [Example: atmo](examples/atmo.md) runs
-a real app end to end.
+at `https://main.myapp.local.snowglobe.at`, and sends the browser back to the app. Each piece is in
+the sections below. [Example: Statusphere](examples/statusphere.md) is the same flow with a real app,
+and CI runs it on every change.
 
 ## `snowglobe run`: settings and the CA
 
@@ -226,7 +226,7 @@ authority account (`PDS_LEXICON_AUTHORITY_DID`), never through DNS.
 That makes this the way to try a lexicon before it is public, and it has to be done for any lexicon
 the PDS needs to read. An OAuth permission set in your app's scope is one: if the authority does not
 hold it, the PDS cannot expand the scope and the consent page fails
-([Example: atmo](examples/atmo.md) hit this).
+([Example: atmo](examples/atmo.md) publishes two).
 
 You publish them as `com.atproto.lexicon.schema` records, keyed by NSID. `snowglobe lexicons` does
 that for a folder:
@@ -271,7 +271,7 @@ snowglobe app myapp 5173     # https://myapp.app.<domain> -> port 5173 on this m
 
 You can also put it in `snowglobe.yml` with `apps[].local`, as in the example above, and `up` makes the
 route. The app must listen where Docker's host gateway lands (`host.docker.internal` inside the
-containers; the `docker0` address here), or on `0.0.0.0`. The route is kept in `<state>/https/apps`
+containers, usually the `docker0` address on Linux), or on `0.0.0.0`. The route is kept in `<state>/https/apps`
 (a rerun with the same name changes the port), and nginx is reloaded. A name under `app.<domain>`
 with no route gets a 404 from nginx and reaches nothing.
 

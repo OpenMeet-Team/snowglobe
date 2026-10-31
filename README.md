@@ -119,10 +119,10 @@ To run your own app inside of a snowglobe, see [Your app in a snowglobe](docs/yo
 
 ## Platforms
 
-Snowglobe runs on Linux, and on Windows under WSL 2. Both are tested. macOS is not supported, but we'd love to.
+Snowglobe runs on Linux, and on Windows under WSL 2. Both are tested. macOS is not supported yet.
 If you try it on a Mac, please
 [open an issue](https://github.com/OpenMeet-Team/snowglobe/issues) with what broke, or that it
-worked, and we'd love to experiment with you.
+worked.
 
 ## Documentation
 
@@ -135,6 +135,8 @@ worked, and we'd love to experiment with you.
 - [How it works](docs/how-it-works.md): what runs and how it is wired, Slingshot, and the relay build.
 - [Configuration](docs/configuration.md): the settings.
 - [Testing Snowglobe](docs/testing.md): the test suite and the smoke run.
+- [Example: Statusphere](docs/examples/statusphere.md): the atproto example app on a snowglobe, with
+  two small changes. CI runs it end to end.
 - [Example: atmo](docs/examples/atmo.md): an events app on a local snowglobe.
 - The older plain-http stack (`npm run up`) is not in this version. Its code and README are in the
   [v0.2.0 tag](https://github.com/OpenMeet-Team/snowglobe/tree/v0.2.0) (v0.1.0 has the first version of it).

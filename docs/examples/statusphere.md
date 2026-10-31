@@ -2,9 +2,9 @@
 
 > **CI runs the whole flow on every change** ([`scripts/statusphere.mjs`](../../scripts/statusphere.mjs)):
 > sign in as alice through her PDS's sign-in and consent pages, pick an emoji, see the record on her
-> PDS and in the feed, and see a status bob wrote outside the app arrive through Tap. It runs in
-> headless Chromium on the machine that runs Docker; it has not been run in a browser on your own
-> machine through the proxy (see [What is left](#what-is-left)).
+> PDS and in the feed, and see a status bob wrote outside the app arrive through Tap. CI uses
+> headless Chromium on the machine that runs Docker. A browser on another computer, through a
+> forwarded port 443 ([From a browser on your own computer](../browser.md)), is not part of that run.
 
 [Statusphere](https://github.com/bluesky-social/statusphere-example-app) is the atproto example app:
 sign in with a handle, pick an emoji, and the app writes an `xyz.statusphere.status` record to your
@@ -42,7 +42,8 @@ that names an app the file does not have.
 ## Three changes to the app
 
 Run `snowglobe up`, then in a clone of the app (the same changes as a patch:
-[`statusphere.patch`](statusphere.patch), for `git apply`):
+[`statusphere.patch`](statusphere.patch), for `git apply` at the app's commit `dbb9773`, the one CI
+uses):
 
 ```diff
 --- a/lib/auth/client.ts
@@ -75,7 +76,7 @@ Run `snowglobe up`, then in a clone of the app (the same changes as a patch:
 
 ## The key
 
-The app signs its OAuth requests with a key. Its `pnpm gen-key` script failed here with a
+The app signs its OAuth requests with a key. At that commit, its `pnpm gen-key` script fails with a
 package-exports error from its locked dependencies, so make the same kind of key with Node:
 
 ```sh
@@ -109,18 +110,11 @@ curl -s --cacert ~/.local/share/snowglobe/ca/ca.crt \
 
 "Recent" fills from [Tap](https://github.com/bluesky-social/indigo/tree/main/cmd/tap). Tap finds an
 account when it writes a `xyz.statusphere.status` record, fetches the account's repo, and posts each
-event to the app's `/api/webhook`. In a clean snowglobe, alice's and bob's statuses both appeared in the
-app's Recent list with their handles. Tap runs in a small DNS container's network, so it reaches the app's
-https name and can check a handle ([How it works](../how-it-works.md)).
+event to the app's `/api/webhook`. Statuses from both alice and bob show in the app's Recent list, with
+their handles. Tap runs in a small DNS container's network, so it reaches the app's https name and can
+check a handle ([How it works](../how-it-works.md)).
 
-An account that wrote before Tap started is not found until it writes again: Tap's own crawl of the
-collection gets `HTTP 401 AuthMissing` from the PDS every minute. After a new write, Tap fetches the
-whole repo and the app receives its events. This happens with a Tap you start fresh, such as after
-`down -v`, if accounts already have statuses.
-
-## What is left
-
-- **Your own browser.** The sign-in and the click ran in headless Chromium on the machine that runs
-  Docker, with certificate errors ignored and the snowglobe's names mapped to its loopback address.
-  They have not been run in a browser on your own machine through the [proxy](../browser.md).
-- **The key.** The app's `pnpm gen-key` still fails on its locked dependencies, hence the Node command above.
+Tap does not see an account that wrote before Tap started until that account writes again. The PDS
+refuses Tap's crawl of the collection (HTTP 401), so Tap learns of an account only from a new write.
+It then fetches the whole repo, and the app receives the older statuses too. You see this when you
+turn Tap on in a snowglobe whose accounts already have statuses.
