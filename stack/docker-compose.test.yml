@@ -22,7 +22,8 @@ services:
       retries: 10
 
   maildev:
-    image: maildev/maildev:latest
+    # Pinned: 3.0.0 moved the health check to /api/healthz (stack/page/snowglobe.conf asks there).
+    image: maildev/maildev:3.0.0
     restart: unless-stopped
     ports:
       - "${SG_MAILDEV_WEB_PORT:-${DEVNET_MAILDEV_WEB_PORT:-1081}}:1080"

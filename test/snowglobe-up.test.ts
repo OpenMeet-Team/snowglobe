@@ -157,6 +157,11 @@ describe('snowglobe up and down', () => {
     writeFileSync(join(r, 'stack/https/nginx.conf.template'), readFileSync(join(r, 'stack/https/nginx.conf.template'), 'utf8') + '# changed\n');
     sg(r, ['up'], env);
     expect(calls()).toEqual(['restart nginx', 'exec -T nginx nginx -s reload', 'restart nginx']);
+    // A changed network page config, such as a new health path: restarted again.
+    mkdirSync(join(r, 'stack/page'), { recursive: true });
+    writeFileSync(join(r, 'stack/page/snowglobe.conf'), '# changed\n');
+    sg(r, ['up'], env);
+    expect(calls()).toEqual(['restart nginx', 'exec -T nginx nginx -s reload', 'restart nginx', 'restart nginx']);
   });
 
   it('up refuses a SG_BIND that is not loopback before any docker command', () => {
