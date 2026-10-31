@@ -10,9 +10,9 @@
   passes the name through, so a PDS can answer `/.well-known/atproto-did` for a handle. A name
   nginx does not list gets no certificate.
 - **The PDSes reach each other over TLS.** Inside Docker, nginx also answers to every PDS's name,
-  and each PDS trusts the CA. Names under `app.<domain>` resolve to nginx instead of `127.0.0.1`
-  (inside a container that would be the container itself), so a PDS can fetch your app's
-  sign-in metadata.
+  and each PDS trusts the CA. Inside each PDS, every name under the domain resolves to nginx
+  instead of `127.0.0.1` (inside a container that would be the container itself), so a PDS can
+  fetch the sign-in metadata of your app at `<name>.app.<domain>` or of PDSls.
 - **The relay dials wss**, which is why it is built locally (see [The relay, built
   locally](#the-relay-built-locally)). Its `listHosts` shows a host only once it has sent an event.
 - **Tap runs in the DNS container's network** (`tap-dns`), whose DNS answers every name under the

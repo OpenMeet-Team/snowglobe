@@ -1,13 +1,14 @@
 // Preloaded into each PDS (NODE_OPTIONS=--require, in the globe bin/snowglobe.mjs render writes), so a PDS can
-// reach an app at https://<name>.app.<domain>: it fetches a confidential client's
-// metadata and keys from there. Docker's DNS has no wildcard names, so every such name is
+// reach an OAuth client under the globe's domain, an app at https://<name>.app.<domain> or
+// PDSls at https://pdsls.<domain>: it fetches the client's metadata and keys from there.
+// Docker's DNS has no wildcard names, so every such name is
 // looked up as nginx instead, which routes it by name (stack/https/nginx.conf.template). Only
 // the address lookup changes: the request still carries the app's name, and TLS still
 // checks the certificate for it against the snowglobe CA. Every other name resolves as usual.
 //
-// SG_RESOLVE_DOMAIN sets the domain whose names, itself included, go to nginx. Each PDS sets it
-// to app.<domain>, where the apps are; a group host sets it to the globe's domain: it resolves its members' handles, which Docker's DNS does
-// not know.
+// SG_RESOLVE_DOMAIN sets the domain whose names, itself included, go to nginx. Each PDS and
+// each group host sets it to the globe's domain; a group host also resolves its members'
+// handles there, which Docker's DNS does not know.
 'use strict';
 const dns = require('dns');
 
