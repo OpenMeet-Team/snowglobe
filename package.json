@@ -1,6 +1,6 @@
 {
   "name": "@openmeet/snowglobe",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Standalone, testable ATProto development network for local development and CI",
   "type": "module",
   "bin": {

@@ -2,7 +2,7 @@
 
 Changes to the default stack that existing setups will notice:
 
-## Unreleased
+## v0.5.0 (2026-10-31)
 
 - **Breaking: each local snowglobe has a domain of its own, `<globe>.local.snowglobe.at`.** A file
   with no `domain:` line was on `local.snowglobe.at`, which every snowglobe on the machine shared; it
