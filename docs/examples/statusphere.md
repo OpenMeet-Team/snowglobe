@@ -31,11 +31,12 @@ apps:
       TAP_URL: ${services.tap.url}
 ```
 
-`PUBLIC_URL` makes the app use an https client ID, `https://statusphere.app.local.snowglobe.at/oauth-client-metadata.json`.
+`PUBLIC_URL` makes the app use an https client ID, `https://statusphere.app.statusphere.local.snowglobe.at/oauth-client-metadata.json`
+(the file's domain is `statusphere.local.snowglobe.at`, from its `globe:` line).
 A PDS in Docker will not fetch a loopback client ID (`http://127.0.0.1:3000`), which is the one the app
 uses without it. `HANDLE_RESOLVER_URL` is the change below. `services.tap` turns Tap on and tells it to send
 the app the events of `xyz.statusphere.status` at the app's `/api/webhook`; the app reads Tap at `TAP_URL`
-(`http://127.0.0.1:2480` with the default `SG_BIND`; `SG_BIND` changes the address and `SG_TAP_PORT` the port). `snowglobe check` refuses a webhook
+(`http://<SG_BIND>:2480`, on the snowglobe's own address; `SG_TAP_PORT` changes the port). `snowglobe check` refuses a webhook
 that names an app the file does not have.
 
 ## Three changes to the app
@@ -96,12 +97,12 @@ PRIVATE_KEY="$(cat key.jwk)" snowglobe run pnpm dev
 If port 3000 is taken on your machine, pick a free one: set it as the app's `local` port in the file and run the app with `PORT=<that port>`.
 A snowglobe brought up before `services.tap` was set needs `snowglobe up` again, which recreates Tap.
 
-Open `https://statusphere.app.local.snowglobe.at`, sign in as `alice.local.snowglobe.at` (her password
+Open `https://statusphere.app.statusphere.local.snowglobe.at`, sign in as `alice.statusphere.local.snowglobe.at` (her password
 is `ALICE_PASSWORD` in `<state>/accounts.env`), authorize, and pick an emoji. The record is on her PDS:
 
 ```sh
-snowglobe run curl -s --cacert ~/.local/share/snowglobe/ca/ca.crt \
-  'https://main.local.snowglobe.at/xrpc/com.atproto.repo.listRecords?repo=alice.local.snowglobe.at&collection=xyz.statusphere.status'
+curl -s --cacert ~/.local/share/snowglobe/ca/ca.crt \
+  'https://main.statusphere.local.snowglobe.at/xrpc/com.atproto.repo.listRecords?repo=alice.statusphere.local.snowglobe.at&collection=xyz.statusphere.status'
 ```
 
 ## The feed

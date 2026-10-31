@@ -5,48 +5,48 @@ OAuth, looks up handles and DIDs, and reads and writes records on a PDS. Nothing
 and nothing in it is test-only. What changes is the other side: the PDSes, the PLC directory and
 Jetstream it finds are the snowglobe's, not Bluesky's. With this tooling, you can control the isolated atproto network to meet your needs.
 
-Two things have to be true for that to work, and the snowglobe has a command for each:
+Every name in the snowglobe already leads to it, for any program on the machine: public DNS sends
+them to `127.0.0.1`, where the name router passes each to the snowglobe it belongs to
+([The name router](snowglobe.md#the-name-router)). Two things are left for the app, and the snowglobe
+has a command for them:
 
 | The app needs to... | Command | What it does |
 | --- | --- | --- |
-| **reach** the snowglobe's servers | `snowglobe run <command>` | Starts your command so that `plc.directory` and every name in the snowglobe lead to the snowglobe, and so that Node trusts its certificate. It also hands the command the settings below. |
 | **be told** where things are | `snowglobe env` | Prints the snowglobe's addresses as settings your app reads. |
+| **trust** the snowglobe's certificate, and get those settings | `snowglobe run <command>` | Starts your command with the settings, and with Node trusting the snowglobe's CA. |
 
 **Why an app has to be told.** An app is configured with a few addresses: the PLC directory to
 resolve DIDs, the PDS people sign up on, Jetstream for the stream of writes. Its defaults are the real
 network's. In a snowglobe they must point at the snowglobe instead, and the addresses are not fixed,
-because they follow your `snowglobe.yml` (a PDS named `main` is at `main.local.snowglobe.at`, one
-named `other` is at `other.local.snowglobe.at`). `snowglobe env` fills them in from the file, so you
-do not copy them by hand.
+because they follow your `snowglobe.yml` (in a file whose `globe:` is `myapp`, a PDS named `main` is
+at `main.myapp.local.snowglobe.at`, one named `other` at `other.myapp.local.snowglobe.at`).
+`snowglobe env` fills them in from the file, so you do not copy them by hand. The PLC is one of them:
+an app that left it at `plc.directory` would look its accounts up in the real directory, which has
+never heard of them.
 
 Here is the same app, on the real network and in a snowglobe:
 
 | | Real network | In a snowglobe |
 | --- | --- | --- |
-| PLC address (a setting) | `https://plc.directory` | `https://plc.local.snowglobe.at`, which `env` supplies |
-| Sign-up PDS (a setting) | `https://bsky.social` | `https://main.local.snowglobe.at`, which `env` supplies |
-| Does the name lead to a server? | public DNS | `run` makes the snowglobe's names lead to the snowglobe |
+| PLC address (a setting) | `https://plc.directory` | `https://plc.myapp.local.snowglobe.at`, which `env` supplies |
+| Sign-up PDS (a setting) | `https://bsky.social` | `https://main.myapp.local.snowglobe.at`, which `env` supplies |
+| Does the name lead to a server? | public DNS | public DNS, then the name router |
 | Is the certificate trusted? | public certificate authorities | `run` adds the snowglobe's CA |
 
-`env` answers "where is it?", and `run` answers "can the app get there, and trust it?". Both can be
-used for one app.
+`env` answers "where is it?", and `run` answers "does the app trust it?", handing over `env`'s answer
+too.
 
 ## When to use `run`, and when `env`
 
-- **Use `run` when you start the app, or its tests, from a command on this machine.** It does both
-  jobs. It makes the names reach the snowglobe, trusts its certificate, and hands the command the
-  settings. You never type `env`.
+- **Use `run` when you start the app, or its tests, from a command on this machine.** It trusts the
+  snowglobe's certificate and hands the command the settings. You never type `env`.
 - **Use `env` alone when `run` cannot start the app.** It prints the settings, and something else has
-  to start the app. Examples: a Mac (`run` needs Linux and bubblewrap); an app started by an editor,
-  a debugger or a process manager, not from a command you type; a framework that reads a `.env` file
-  (`snowglobe env --dotenv > .env.local`). The names still have to reach the snowglobe by another
-  route, such as the browser setup below.
-- **Use `run` without `env`** when the app has no addresses to set, because it uses the real
-  network's names unchanged (`plc.directory`, a handle's own name). The names are enough, and the
-  `env:` mapping can be left out.
-- **Neither helps a browser.** You do not start a browser with `run`, so it needs its own setup to
-  reach the snowglobe ([From a browser on your own computer](browser.md)). The app's page still
-  gets its settings from the dev server that `run` or `env` started.
+  to start the app. Examples: an app started by an editor, a debugger or a process manager, not from a
+  command you type; a framework that reads a `.env` file (`snowglobe env --dotenv > .env.local`). The
+  app then has to trust the CA some other way, such as `NODE_EXTRA_CA_CERTS`, which `env` prints too.
+- **A browser needs neither.** It needs to trust the CA once ([From a browser on your own
+  computer](browser.md)). The app's page still gets its settings from the dev server that `run` or
+  `env` started.
 
 ## An example: a status app that signs in with OAuth
 
@@ -69,7 +69,7 @@ use the pieces described further down.
    ```yaml
    apps:
      - name: myapp
-       local: { port: 5173 }          # https://myapp.app.local.snowglobe.at -> your dev server
+       local: { port: 5173 }          # https://myapp.app.<domain> -> your dev server
        env:                           # the settings your app reads, and what to put in them
          PUBLIC_ATPROTO_PLC_URL: ${services.plc.url}
          PUBLIC_ATPROTO_SIGNUP_PDS: ${pds.main.url}
@@ -81,39 +81,33 @@ use the pieces described further down.
    snowglobe up
    ```
 
-4. **Start the app under `run`**, so it gets the settings, reaches the snowglobe, and trusts it:
+4. **Start the app under `run`**, so it gets the settings and trusts the snowglobe:
 
    ```bash
    snowglobe run npm run dev
    ```
 
-5. **Sign in as alice.** Open `https://myapp.app.local.snowglobe.at` in a browser that can reach the
-   snowglobe. Sign in as `alice.local.snowglobe.at`. Her password is in `<state>/accounts.env`
-   (`ALICE_PASSWORD`).
+5. **Sign in as alice.** Open `https://myapp.app.myapp.local.snowglobe.at` in a browser that trusts
+   the snowglobe's CA. Sign in as `alice.myapp.local.snowglobe.at`. Her password is in
+   `<state>/accounts.env` (`ALICE_PASSWORD`).
 
-What happens at sign-in: the app's OAuth `client_id` is a URL on `myapp.app.local.snowglobe.at`. The
+What happens at sign-in: the app's OAuth `client_id` is a URL on `myapp.app.myapp.local.snowglobe.at`. The
 PDS, which runs in Docker, fetches the app's client metadata from that URL over https. That works
 because step 2 routed the name to your dev server. The PDS then shows its sign-in and consent pages
-at `https://main.local.snowglobe.at`, and sends the browser back to the app. This outline has not
+at `https://main.myapp.local.snowglobe.at`, and sends the browser back to the app. This outline has not
 been run as a whole. Each piece is in the sections below, and [Example: atmo](examples/atmo.md) runs
 a real app end to end.
 
-## `snowglobe run`: reach the snowglobe
+## `snowglobe run`: settings and the CA
 
 ```bash
-snowglobe run getent hosts plc.directory     # 127.0.0.1 inside; the real address outside
 snowglobe run npm run dev                    # your app, from its own folder
 snowglobe run npm test                       # or its tests
 ```
 
-`snowglobe run <command>` runs the command with three changes, for that command and what it starts
+`snowglobe run <command>` runs the command with two changes, for that command and what it starts
 and nothing else on your machine:
 
-- **The snowglobe's names lead to the snowglobe.** That covers the network's page, every PDS, its
-  services, every handle it knows, every app route, and `plc.directory`. Your other programs still
-  reach the real `plc.directory`.
-  [bubblewrap](https://github.com/containers/bubblewrap) does this. It gives the command a private
-  hosts file and leaves the filesystem, network and user as they are.
 - **Node trusts the snowglobe's certificate authority**, in addition to its usual ones
   (`NODE_EXTRA_CA_CERTS=<state root>/ca/ca.crt`). Node's certificate checks stay on.
 - **The command gets the settings** `snowglobe env` would print, passwords included. `run` prints
@@ -122,17 +116,10 @@ and nothing else on your machine:
 If your app runs as a Cloudflare Worker locally (`wrangler dev`), its `fetch` runs in a separate
 runtime, workerd. The same CA file is handed to it, so it should trust the snowglobe too.
 
-**Names made after the command starts.** `run` reads the names when it starts, and it maps them one
-by one (there is no wildcard). A handle or app route you create later, or a name the snowglobe does
-not list, such as a group's handle, is not mapped. Either restart the command, or name it when you
-start:
-
-```bash
-HTTPS_RUN_EXTRA_NAMES="team.gh.local.snowglobe.at" snowglobe run npm test    # space-separated
-```
-
-`run` needs Linux and bubblewrap. On a Mac it says so and exits, and the app there is handed its
-settings with `eval "$(snowglobe env)"` instead.
+`run` maps no names. The snowglobe's names resolve for the command as for any program on the
+machine, through public DNS and the name router, so a handle or app route made after the command
+started works at once. `plc.directory` is the real one: the app reaches the snowglobe's PLC through
+its setting (`${services.plc.url}`), as it must on a hosted globe.
 
 ## `snowglobe env`: know where things are
 
@@ -155,7 +142,7 @@ apps:
 Three ways to use what it prints:
 
 ```bash
-snowglobe env                          # prints:  export PUBLIC_ATPROTO_PLC_URL='https://plc.local.snowglobe.at' ...
+snowglobe env                          # prints:  export PUBLIC_ATPROTO_PLC_URL='https://plc.myapp.local.snowglobe.at' ...
 eval "$(snowglobe env)"                # runs those export lines in your shell, so later commands see them
 snowglobe env --dotenv > .env.local    # NAME=value lines, for a framework's own .env file
 ```
@@ -202,14 +189,14 @@ above.
 alice and bob:
 
 ```bash
-snowglobe account tester TESTER             # tester.local.snowglobe.at, on the PDS with bare handles
-snowglobe account guest GUEST other         # guest.other.local.snowglobe.at, on a PDS named other (the file needs a second PDS)
+snowglobe account tester TESTER             # tester.<domain>, on the PDS with bare handles
+snowglobe account guest GUEST other         # guest.other.<domain>, on a PDS named other (the file needs a second PDS)
 ```
 
 Without `<pds>` it uses the PDS with `bare_handles`, else the first. It prints the DID alone, and a
 rerun finds the account instead of making another. The login goes to `ACCOUNTS_FILE` (default
 `<state>/accounts.env`, mode 600) as `TESTER_HANDLE`, `TESTER_DID`, `TESTER_PASSWORD` and
-`TESTER_PDS`, and the handle goes to `<state>/https/names`. A PDS with `invites: required` is sent
+`TESTER_PDS`. The handle resolves at once, like every name under the domain. A PDS with `invites: required` is sent
 `SG_INVITE_CODE` if it is set, else a single-use code minted for the account. On the PDS with bare
 handles, a name the snowglobe uses itself (a PDS's, a service's, an app's handle ending) is refused,
 because the handle would be that name.
@@ -266,8 +253,8 @@ app on `localhost:5173`:
   read the metadata.
 - **Servers in the snowglobe can call your app.** A route also reaches your app from inside Docker,
   through `host.docker.internal`.
-- **The name works under `snowglobe run`**, so your app's own server code and tests can call
-  `https://myapp.app.local.snowglobe.at` too.
+- **The name works on the machine too**, so your app's own server code and tests can call
+  `https://myapp.app.<domain>`, under `snowglobe run` for the CA.
 
 Without the route, the PDS cannot read the app's client metadata, so sign-in cannot start.
 
@@ -279,7 +266,7 @@ Without the route, the PDS cannot read the app's client metadata, so sign-in can
 | `snowglobe app --render` | only writes nginx's routes and the network page from `<state>/https/apps`, as `up` does before it starts |
 
 ```bash
-snowglobe app myapp 5173     # https://myapp.app.local.snowglobe.at -> port 5173 on this machine
+snowglobe app myapp 5173     # https://myapp.app.<domain> -> port 5173 on this machine
 ```
 
 You can also put it in `snowglobe.yml` with `apps[].local`, as in the example above, and `up` makes the
@@ -290,36 +277,35 @@ with no route gets a 404 from nginx and reaches nothing.
 
 ### Handles of your own
 
-Some apps hand out handles, as a PDS does. A group host makes `team.gh.local.snowglobe.at` for a group
+Some apps hand out handles, as a PDS does. A group host makes `team.gh.<domain>` for a group
 called `team`. For those, give the route an ending, the third word:
 
 ```bash
-snowglobe app grouphost 7070 gh    # also https://<handle>.gh.local.snowglobe.at -> port 7070
+snowglobe app grouphost 7070 gh    # also https://<handle>.gh.<domain> -> port 7070
 ```
 
 In `snowglobe.yml` that is `handles: gh` under `local:`. nginx then sends every name under
-`gh.local.snowglobe.at` to the app, Host and all, so the app answers `/.well-known/atproto-did` for
-its handles, and they resolve from anywhere on the snowglobe. The leaf certificate gains
-`*.gh.local.snowglobe.at` from the same CA, so nothing has to be trusted again. A PDS's name
+`gh.<domain>` to the app, Host and all, so the app answers `/.well-known/atproto-did` for
+its handles, and they resolve from anywhere on the snowglobe and on the machine. The leaf certificate
+gains `*.gh.<domain>` from the same CA, so nothing has to be trusted again. A PDS's name
 (`main`, `other`, and so on) cannot be an ending, and an ending belongs to one app. A rerun without
-the ending drops it. Under `snowglobe run`, list each such handle in `HTTPS_RUN_EXTRA_NAMES`, as for
-any handle.
+the ending drops it.
 
 ### Check the OAuth path (optional)
 
 `scripts/https-probe.mjs` checks the whole path for any app name. It resolves an account through
-`https://plc.directory` with stock atcute at its defaults, serves a confidential client at
+the snowglobe's PLC with stock atcute, told only that address, serves a confidential client at
 `https://<PROBE_APP>.app.<domain>/`, pushes a PAR with that client_id, and pushes a raw PAR with a
 `.test` client_id, which the PDS refuses. `ATCUTE_DIR` is required: a directory node resolves
 `@atcute/oauth-node-client` and `@atcute/identity-resolver` from.
 
 ```bash
 snowglobe app probe 5480
-ATCUTE_DIR=<dir> PROBE_DID=<did> PROBE_PDS=https://main.local.snowglobe.at snowglobe run node scripts/https-probe.mjs
+ATCUTE_DIR=<dir> PROBE_DID=<did> PROBE_PDS=https://main.myapp.local.snowglobe.at snowglobe run node scripts/https-probe.mjs
 ```
 
 ```
-RESOLVED did:plc:... on https://main.local.snowglobe.at through plc.directory, ... off
-PAR ACCEPTED for confidential client https://probe.app.local.snowglobe.at/probe-<run>/oauth-client-metadata.json
+RESOLVED did:plc:... on https://main.myapp.local.snowglobe.at through https://plc.myapp.local.snowglobe.at, ... off
+PAR ACCEPTED for confidential client https://probe.app.myapp.local.snowglobe.at/probe-<run>/oauth-client-metadata.json
 REFUSED .test client_id: HTTP 400 invalid_client_id: The client_id's TLD must not be a local hostname
 ```

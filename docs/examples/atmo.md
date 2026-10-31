@@ -2,7 +2,7 @@
 
 [atmo](https://github.com/flo-bit/atmo-events) is an events app. It runs on
 [the snowglobe](../snowglobe.md) as it would on the real network. Its server reaches each PDS
-and `plc.directory` at their https names, and the app has no snowglobe code or test switch. The snowglobe
+and the PLC at their https names, and the app has no snowglobe code or test switch. The snowglobe
 knows nothing about atmo, so everything below is made with the snowglobe's tools. The steps use the
 `feat/groups-opensocial` branch of
 [tompscanlan/atmo-events](https://github.com/tompscanlan/atmo-events/tree/feat/groups-opensocial),
@@ -12,13 +12,21 @@ checked out beside the snowglobe as `atmo-events/`, and the
 copy [`atmo.yml`](atmo.yml), the snowglobe this example builds on, to `snowglobe.yml` in the snowglobe
 checkout and bring it up (`snowglobe up`). The app is a sibling folder, so no `snowglobe.yml` is above it: in
 each shell also set `SG_FILE` to that file's absolute path, and `state=~/.local/share/snowglobe/snowglobe`, its state folder
-([Which snowglobe, and where it lives](../snowglobe.md#which-snowglobe-and-where-it-lives)).
+([Which snowglobe, and where it lives](../snowglobe.md#which-snowglobe-and-where-it-lives)). The
+snowglobe's domain is `snowglobe.local.snowglobe.at`, from the file's `globe:` line.
+
+**The PLC is a setting.** From snowglobe 0.5.0 an app is told the snowglobe's PLC, and
+`snowglobe run` no longer sends `plc.directory` to the snowglobe. atmo's `feat/groups-opensocial`
+branch has no PLC setting: it looks DIDs up at the real `plc.directory`, which has never heard of the
+snowglobe's accounts, so signing in fails until that branch takes one. The `deploy/snowglobe` branch
+reads `PUBLIC_ATPROTO_PLC_URL`, as in the sealed steps below. Not tested on 0.5.0: the steps on
+either branch.
 
 **Lexicons.** Every snowglobe PDS resolves NSIDs only from the snowglobe's lexicon authority. atmo's OAuth
 scope includes two permission sets, `rsvp.atmo.permissionSet` and `app.bsky.authCreatePosts`. If the
 authority does not hold them, the PDS cannot expand the scope and the consent page fails. Copy both
 from their real authorities, then publish them, and the proposal's lexicons for groups. From the
-snowglobe checkout, outside `snowglobe run`, because the copy reads the real `plc.directory`:
+snowglobe checkout (the copy reads the real `plc.directory`, as any program does):
 
 ```bash
 mkdir -p data/atmo-lexicons
@@ -34,10 +42,9 @@ snowglobe lexicons data/atmo-lexicons
 snowglobe lexicons ../opensocial-proposal/lexicons
 ```
 
-**An account.** `alice.local.snowglobe.at` and `bob.local.snowglobe.at` are already there (see
-[The snowglobe](../snowglobe.md#the-file-and-the-commands)). To use another, make it with
-`snowglobe account` before you start atmo, because `snowglobe run` maps only the handles it knows
-when the command starts.
+**An account.** `alice.snowglobe.local.snowglobe.at` and `bob.snowglobe.local.snowglobe.at` are
+already there (see [The snowglobe](../snowglobe.md#the-file-and-the-commands)). To use another, make
+it with `snowglobe account`, before or after atmo starts.
 
 **Configure atmo.** In `atmo-events/apps/web`, after `pnpm install`, write a git-ignored `.env`.
 It overrides the vars in `wrangler.jsonc` for `vite dev`. Wrangler reads a `.dev.vars` instead
@@ -45,8 +52,8 @@ when one exists, so keep only one of the two:
 
 ```
 OAUTH_PUBLIC_URL=
-GROUP_PDS_SERVICE=https://alpha.local.snowglobe.at
-GROUP_HANDLE_DOMAIN=local.snowglobe.at
+GROUP_PDS_SERVICE=https://alpha.snowglobe.local.snowglobe.at
+GROUP_HANDLE_DOMAIN=snowglobe.local.snowglobe.at
 ```
 
 - `OAUTH_PUBLIC_URL=` is empty on purpose. `wrangler.jsonc` sets it to `https://atmo.rsvp`. Empty
@@ -54,7 +61,7 @@ GROUP_HANDLE_DOMAIN=local.snowglobe.at
   public origin.
 - `GROUP_PDS_SERVICE` and `GROUP_HANDLE_DOMAIN` name where atmo would create group accounts: the
   alpha, the snowglobe PDS that serves spaces. Write the domain with no leading dot. atmo adds the dot
-  itself, and `.local.snowglobe.at` gives handles like `name..local.snowglobe.at`, which the PDS refuses.
+  itself, and `.snowglobe.local.snowglobe.at` gives handles like `name..snowglobe.local.snowglobe.at`, which the PDS refuses.
 
 Then create atmo's tables in its local D1 database. Without them, atmo logs
 `no such table: groups` when it serves its OAuth client metadata.
@@ -72,27 +79,27 @@ snowglobe run pnpm dev     # http://127.0.0.1:5454
 **Use it from a browser.** Set up a browser on your computer as in
 [From a browser on your own computer](../browser.md#from-a-browser-on-your-own-computer). Forward port 5454 to
 5454 as well, since the loopback client's redirect URI names that port. Open
-`http://127.0.0.1:5454` in that browser and sign in as `alice.local.snowglobe.at`, by handle or by DID,
-with her password from `<state>/accounts.env`. atmo sends you to `https://alpha.local.snowglobe.at` to sign in
+`http://127.0.0.1:5454` in that browser and sign in as `alice.snowglobe.local.snowglobe.at`, by handle or by DID,
+with her password from `<state>/accounts.env`. atmo sends you to `https://alpha.snowglobe.local.snowglobe.at` to sign in
 and approve, then back to atmo, signed in.
 
 | URL | What answers |
 | --- | --- |
 | `http://127.0.0.1:5454` | atmo |
-| `https://alpha.local.snowglobe.at` | the alpha PDS: its sign-in and consent pages, and its xrpc |
+| `https://alpha.snowglobe.local.snowglobe.at` | the alpha PDS: its sign-in and consent pages, and its xrpc |
 | `https://<handle>/.well-known/atproto-did` | the handle's PDS, with the handle's DID |
-| `https://plc.directory/<did>` | the snowglobe's PLC, with the DID document |
+| `https://plc.snowglobe.local.snowglobe.at/<did>` | the snowglobe's PLC, with the DID document |
 
-**Use it from the shell.** The same names work under `snowglobe run`. curl does not read
+**Use it from the shell.** The same names work for any program on the machine. curl does not read
 `NODE_EXTRA_CA_CERTS`, so give it the CA. From the snowglobe checkout:
 
 ```bash
-curl_sg() { snowglobe run curl -s --cacert ~/.local/share/snowglobe/ca/ca.crt "$@"; }
-curl_sg https://alpha.local.snowglobe.at/xrpc/_health                # {"version":"0.5.32"}
-curl_sg https://alice.local.snowglobe.at/.well-known/atproto-did     # alice's DID
+curl_sg() { curl -s --cacert ~/.local/share/snowglobe/ca/ca.crt "$@"; }
+curl_sg https://alpha.snowglobe.local.snowglobe.at/xrpc/_health                # {"version":"0.5.32"}
+curl_sg https://alice.snowglobe.local.snowglobe.at/.well-known/atproto-did     # alice's DID
 did=$(sed -n 's/^ALICE_DID=//p' "$state/accounts.env")
-curl_sg https://plc.directory/$did                            # her DID document, alsoKnownAs at://alice.local.snowglobe.at
-curl_sg "https://alpha.local.snowglobe.at/xrpc/com.atproto.repo.listRecords?repo=$did&collection=community.lexicon.calendar.event"
+curl_sg https://plc.snowglobe.local.snowglobe.at/$did                          # her DID document, alsoKnownAs at://alice.snowglobe.local.snowglobe.at
+curl_sg "https://alpha.snowglobe.local.snowglobe.at/xrpc/com.atproto.repo.listRecords?repo=$did&collection=community.lexicon.calendar.event"
 ```
 
 The last line lists the events atmo has written to alice's repo.
@@ -103,11 +110,11 @@ an https origin where the PDS can fetch its client metadata and keys. The snowgl
 with an app route. From the snowglobe checkout:
 
 ```bash
-snowglobe app atmo 5454                       # https://atmo.app.local.snowglobe.at -> port 5454
+snowglobe app atmo 5454                       # https://atmo.app.snowglobe.local.snowglobe.at -> port 5454
 snowglobe invite GROUP_PDS_INVITE_CODE ../atmo-events/apps/web/.env
 ```
 
-Then in `atmo-events/apps/web`, set `OAUTH_PUBLIC_URL=https://atmo.app.local.snowglobe.at` in `.env`
+Then in `atmo-events/apps/web`, set `OAUTH_PUBLIC_URL=https://atmo.app.snowglobe.local.snowglobe.at` in `.env`
 in place of the empty line, and add a client key. atmo's key script prints the key, so write it
 straight into the file:
 
@@ -119,29 +126,29 @@ printf "CLIENT_ASSERTION_KEY='%s'\n" \
 Run atmo where nginx can reach it, still under `snowglobe run`:
 
 ```bash
-__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=atmo.app.local.snowglobe.at \
-HTTPS_RUN_EXTRA_NAMES=mygroup.local.snowglobe.at \
+__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=atmo.app.snowglobe.local.snowglobe.at \
   snowglobe run pnpm dev --host 172.18.0.1 --port 5454 --strictPort
 ```
 
 - `--host` replaces the `127.0.0.1` in atmo's `vite.config.ts`. Use the address that
   `host.docker.internal` has inside the containers; here it is the `docker0` address. Check with
   `docker exec <project>-nginx-1 getent hosts host.docker.internal`.
-- `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` lets vite answer requests for `atmo.app.local.snowglobe.at`.
-- `HTTPS_RUN_EXTRA_NAMES` maps, for atmo's process, the handle of the group you are about to
-  create, since `snowglobe run` reads its names only at start.
+- `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` lets vite answer requests for `atmo.app.snowglobe.local.snowglobe.at`.
 
-Open `https://atmo.app.local.snowglobe.at` in the browser set up above, or from the network's page at
-`https://local.snowglobe.at/`, which links every routed app. Public DNS answers the name with 127.0.0.1, so a browser on this machine needs only the CA. On
-another machine the proxy's PAC covers the name, and only the proxy's port (or 443) needs forwarding. Sign in, then create the group under groups. The form
+Open `https://atmo.app.snowglobe.local.snowglobe.at` in the browser set up above, or from the network's page at
+`https://snowglobe.local.snowglobe.at/`, which links every routed app. Public DNS answers the name with 127.0.0.1, where the
+name router sends it to the snowglobe, so a browser on this machine needs only the CA; on another
+machine, forward port 443 too. Sign in, then create the group under groups. The group's new handle
+resolves at once, like every name under the domain. The form
 mints the group's account on the alpha, then has you sign in as the group to link it. The groups
 e2e below creates a group the same way on every run, through atmo's own create.
 
-**Sealed, as on a snowglobe.** The `deploy/snowglobe` branch of atmo runs with
+**Sealed, as on a snowglobe.** The `deploy/snowglobe` branch of
+[tompscanlan/atmo-events](https://github.com/tompscanlan/atmo-events/tree/deploy/snowglobe) runs with
 `PUBLIC_ATPROTO_SEALED=true`: it refuses to start without its network's addresses and turns off every
 public service with no stand-in. The snowglobe has an https name for each, so the settings mirror a
-snowglobe's. Walked on 2026-10-19 from the network's page to atmo and a signed-in session, in Chromium
-and Firefox through the proxy, with no request leaving the snowglobe.
+snowglobe's. With the steps below, a browser goes from the network's page to atmo and a signed-in
+session, and no request leaves the snowglobe.
 
 1. Lexicons, from the snowglobe checkout: the two permission sets above, and the proposal's lexicons
    from its `main` branch. Its `lex-refactor` branch changed `group.opensocial.meta`, and atmo's
@@ -155,7 +162,7 @@ and Firefox through the proxy, with no request leaving the snowglobe.
 
    Without `dig`, look up a lexicon authority over DNS-over-HTTPS in the copy loop above:
    `curl -s -H 'accept: application/dns-json' "https://cloudflare-dns.com/dns-query?name=_lexicon.$authority&type=TXT" | jq -r '.Answer[0].data'`.
-2. An account to sign in with, made before atmo starts: `snowglobe account <name> <PREFIX>`.
+2. An account to sign in with: `snowglobe account <name> <PREFIX>`.
 3. Route atmo, then from `atmo-events/apps/web` make its `.env` with its own script (it writes the
    cookie secret and client key and prints neither), and its tables:
 
@@ -167,16 +174,16 @@ and Firefox through the proxy, with no request leaving the snowglobe.
 4. Add to `.env`:
 
    ```
-   OAUTH_PUBLIC_URL=https://atmo.app.local.snowglobe.at
+   OAUTH_PUBLIC_URL=https://atmo.app.snowglobe.local.snowglobe.at
    PUBLIC_ATPROTO_SEALED=true
-   PUBLIC_ATPROTO_PLC_URL=https://plc.local.snowglobe.at
-   PUBLIC_ATPROTO_SLINGSHOT_URL=https://slingshot.local.snowglobe.at
-   PUBLIC_ATPROTO_JETSTREAM_URLS=wss://jetstream.local.snowglobe.at
-   PUBLIC_ATPROTO_RELAY_URLS=https://relay.local.snowglobe.at
-   PUBLIC_ATPROTO_SIGNUP_PDS=https://alpha.local.snowglobe.at
-   PUBLIC_ATPROTO_BLOB_URL_TEMPLATE=https://alpha.local.snowglobe.at/xrpc/com.atproto.sync.getBlob?did={did}&cid={cid}
+   PUBLIC_ATPROTO_PLC_URL=https://plc.snowglobe.local.snowglobe.at
+   PUBLIC_ATPROTO_SLINGSHOT_URL=https://slingshot.snowglobe.local.snowglobe.at
+   PUBLIC_ATPROTO_JETSTREAM_URLS=wss://jetstream.snowglobe.local.snowglobe.at
+   PUBLIC_ATPROTO_RELAY_URLS=https://relay.snowglobe.local.snowglobe.at
+   PUBLIC_ATPROTO_SIGNUP_PDS=https://alpha.snowglobe.local.snowglobe.at
+   PUBLIC_ATPROTO_BLOB_URL_TEMPLATE=https://alpha.snowglobe.local.snowglobe.at/xrpc/com.atproto.sync.getBlob?did={did}&cid={cid}
    PUBLIC_NETWORK_NOTICE=Local snowglobe: not Bluesky, test data only.
-   PUBLIC_NETWORK_NOTICE_URL=https://local.snowglobe.at/
+   PUBLIC_NETWORK_NOTICE_URL=https://snowglobe.local.snowglobe.at/
    ```
 
    The image template reaches the alpha's own blobs only; a snowglobe's image service finds any
@@ -184,12 +191,12 @@ and Firefox through the proxy, with no request leaving the snowglobe.
 5. Run it under `snowglobe run`, on every address so nginx can reach it:
 
    ```bash
-   __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=atmo.app.local.snowglobe.at \
+   __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=atmo.app.snowglobe.local.snowglobe.at \
      snowglobe run pnpm dev --host 0.0.0.0 --port 5454 --strictPort
    ```
 
-Open `https://local.snowglobe.at/` and follow its atmo link. Signing in sends you to
-`https://alpha.local.snowglobe.at` for the password and the consent page, and back to atmo.
+Open `https://snowglobe.local.snowglobe.at/` and follow its atmo link. Signing in sends you to
+`https://alpha.snowglobe.local.snowglobe.at` for the password and the consent page, and back to atmo.
 
 **The groups e2e.** It makes its fixtures with the same tools. From the snowglobe checkout, after the
 lexicons above:
@@ -208,8 +215,7 @@ snowglobe invite E2E_INVITE_CODE data/atmo-e2e.env   # each run mints its group 
   echo "E2E_CREDENTIALS=$PWD/data/atmo-e2e.env"; } > data/atmo-e2e.fixtures.env
 ```
 
-Then from atmo's `apps/web`, under `snowglobe run`. Start it after the accounts exist, so their handles
-are mapped:
+Then from atmo's `apps/web`, under `snowglobe run`, which gives it the CA:
 
 ```bash
 snowglobe run sh -c \
@@ -218,7 +224,7 @@ snowglobe run sh -c \
 # SUMMARY: 49 passed, 0 failed
 ```
 
-The test refuses any host that is not this machine. Under `snowglobe run` the snowglobe's names resolve to
-127.0.0.1, so it admits them. Without `snowglobe run` it refuses them before any login. The test is
+The test refuses any host that is not this machine. The snowglobe's names resolve to 127.0.0.1,
+so it admits them. The test is
 `apps/web/scripts/groups-e2e.mjs` on the `feat/groups-opensocial` branch of
 [tompscanlan/atmo-events](https://github.com/tompscanlan/atmo-events/tree/feat/groups-opensocial/apps/web/scripts).

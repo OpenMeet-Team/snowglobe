@@ -4,11 +4,44 @@ Changes to the default stack that existing setups will notice:
 
 ## Unreleased
 
+- **Breaking: each local snowglobe has a domain of its own, `<globe>.local.snowglobe.at`.** A file
+  with no `domain:` line was on `local.snowglobe.at`, which every snowglobe on the machine shared; it
+  is now on its own, `snowglobe.local.snowglobe.at` for the default file. Every name moves with it:
+  `main.local.snowglobe.at` becomes `main.snowglobe.local.snowglobe.at`, and `alice.local.snowglobe.at`
+  becomes `alice.snowglobe.local.snowglobe.at`. A snowglobe made before keeps accounts whose handles
+  and DID documents name the old domain, and there is no migration: run `snowglobe down -v` (it drops
+  every account) and `snowglobe up` again. A file can keep the shared domain with
+  `domain: local.snowglobe.at`. Your CA stays, since it already vouches for every name under
+  `local.snowglobe.at`; `up` reissues each snowglobe's leaf for its new names. The examples,
+  `docs/examples/atmo.yml` and `statusphere.yml`, drop their `domain:` line and show the new default.
+- **Breaking: `127.0.0.1:443` is the name router's.** Public DNS sends every name under
+  `local.snowglobe.at` to `127.0.0.1`. There `up` now starts one name router for the machine, a
+  container named `snowglobe-router`, which passes each connection to the snowglobe whose domain the
+  name is under. So every snowglobe on the machine answers by name at once, and a handle made while an
+  app runs resolves at once. A snowglobe now publishes its ports on an address of its own from
+  `127.0.0.2` on. One still running on `127.0.0.1` from before (or started with `SG_BIND=127.0.0.1`)
+  holds the router's address, so the router does not start while it runs: `snowglobe down` it and
+  `up` it again to move it. `down` takes the router away with the last snowglobe, and `snowglobe ls`
+  ends with what it routes. Two snowglobes cannot be up at one domain; `up` refuses the second. The
+  router runs on Linux, WSL 2 included. Elsewhere, or with `SG_ROUTER=off`, a snowglobe publishes on
+  `127.0.0.1` as before, and only that one is reached by name.
+- **Breaking: `snowglobe run` no longer maps names, or sends `plc.directory` to the snowglobe.** It
+  hands the command the app's settings and the CA, and needs no bubblewrap. The names resolve for every
+  program through public DNS and the router, so `HTTPS_RUN_EXTRA_NAMES` and the hosts file `run`
+  wrote are gone. `plc.directory` is the real directory everywhere. An app takes the snowglobe's PLC as
+  a setting (`${services.plc.url}`, which `snowglobe env` prints and `run` hands over), as it must on a
+  hosted snowglobe. An app that relied on `run` for `plc.directory` now looks its accounts up in the
+  real directory, which does not know them, and cannot sign in until it is given that setting. The
+  network page no longer says the PLC is `plc.directory` under `run`, and `scripts/https-probe.mjs`
+  tells atcute the snowglobe's PLC.
+- **A browser on another computer needs one forwarded port, 443.** It reaches the name router on the
+  machine that runs Docker, and through it every snowglobe there, by name. The docs no longer walk
+  through the proxy and its PAC file or Chrome's launch flags. The proxy still runs on `SG_PROXY_PORT`.
 - **Signing in through PDSls works.** PDSls's Add account failed with "Unable to obtain client
   metadata ... Connection refused": inside a PDS only names under `app.<domain>` led to nginx, so
   `pdsls.<domain>` led to `127.0.0.1`, the PDS's own container. Each PDS now sends every name under
   the domain to nginx, as a group host already did. You can now sign in to PDSls, or make a new
-  account in the browser: type the PDS's address, such as `https://main.local.snowglobe.at`, in
+  account in the browser: type the PDS's address, such as `https://main.snowglobe.local.snowglobe.at`, in
   place of a handle, and choose Create a new account. `up` picks up the change.
 - **The network page shows Mail as up.** MailDev 3.0.0, the image `latest` pointed at from
   2026-09-23, moved its health check to `/api/healthz`, so the page's check got a 404 and showed

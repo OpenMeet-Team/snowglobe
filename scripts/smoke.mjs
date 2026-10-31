@@ -111,7 +111,7 @@ function diagnose(r) {
 const version = (cmd, args) => spawnSync(cmd, args, { encoding: 'utf8' }).stdout?.trim().split('\n')[0] || 'missing';
 
 console.log(`copy: ${root}`);
-console.log(`node ${process.version}; ${version('docker', ['compose', 'version'])}; bwrap ${version('bwrap', ['--version'])}; ${process.platform}`);
+console.log(`node ${process.version}; ${version('docker', ['compose', 'version'])}; ${process.platform}`);
 console.log(`domain ${wantDomain}, bind ${env.SG_BIND}, project ${PROJECT}\n`);
 
 // The app, in a process of its own: this one waits on each command in turn, and would not answer.
