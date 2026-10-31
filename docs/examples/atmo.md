@@ -125,8 +125,8 @@ HTTPS_RUN_EXTRA_NAMES=mygroup.local.snowglobe.at \
 ```
 
 - `--host` replaces the `127.0.0.1` in atmo's `vite.config.ts`. Use the address that
-  `host.docker.internal` has inside the containers; here it is the `docker0` address. Check with
-  `docker exec <project>-nginx-1 getent hosts host.docker.internal`.
+  `host.docker.internal` has inside the containers, usually the `docker0` address. `172.18.0.1` above
+  is an example. Check yours with `docker exec <project>-nginx-1 getent hosts host.docker.internal`.
 - `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` lets vite answer requests for `atmo.app.local.snowglobe.at`.
 - `HTTPS_RUN_EXTRA_NAMES` maps, for atmo's process, the handle of the group you are about to
   create, since `snowglobe run` reads its names only at start.
@@ -137,11 +137,12 @@ another machine the proxy's PAC covers the name, and only the proxy's port (or 4
 mints the group's account on the alpha, then has you sign in as the group to link it. The groups
 e2e below creates a group the same way on every run, through atmo's own create.
 
-**Sealed, as on a snowglobe.** The `deploy/snowglobe` branch of atmo runs with
+**Sealed, as on a snowglobe.** The `deploy/snowglobe` branch of
+[tompscanlan/atmo-events](https://github.com/tompscanlan/atmo-events/tree/deploy/snowglobe) runs with
 `PUBLIC_ATPROTO_SEALED=true`: it refuses to start without its network's addresses and turns off every
 public service with no stand-in. The snowglobe has an https name for each, so the settings mirror a
-snowglobe's. Walked on 2026-10-19 from the network's page to atmo and a signed-in session, in Chromium
-and Firefox through the proxy, with no request leaving the snowglobe.
+snowglobe's. With the steps below, a browser goes from the network's page to atmo and a signed-in
+session, and no request leaves the snowglobe.
 
 1. Lexicons, from the snowglobe checkout: the two permission sets above, and the proposal's lexicons
    from its `main` branch. Its `lex-refactor` branch changed `group.opensocial.meta`, and atmo's
@@ -204,7 +205,7 @@ unset ACCOUNTS_FILE
 snowglobe invite E2E_INVITE_CODE data/atmo-e2e.env   # each run mints its group with one use
 # what the test reads: URLs, DIDs, the handle domain and where the secrets are; no secret
 { grep -E '^E2E_[A-Z]+_DID=' data/atmo-e2e.env
-  snowglobe env --dotenv --app atmo | grep -E '^E2E_(PDS|PLC_URL|HANDLE_DOMAIN)='   # needs an `atmo` entry under `apps:` with an `env:` that maps these three; atmo.yml does not have one yet
+  snowglobe env --dotenv --app atmo | grep -E '^E2E_(PDS|PLC_URL|HANDLE_DOMAIN)='   # needs an `atmo` entry under `apps:` whose `env:` maps these three; add one to your copy of atmo.yml
   echo "E2E_CREDENTIALS=$PWD/data/atmo-e2e.env"; } > data/atmo-e2e.fixtures.env
 ```
 

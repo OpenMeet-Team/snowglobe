@@ -7,7 +7,7 @@ browser has to trust the snowglobe's CA. What you do about the first depends on 
 
 1. **Trust the CA.** Run `snowglobe trust`. It puts your CA (`<state root>/ca/ca.crt`, one
    per user) in the system store and in the databases Chrome, Edge and Firefox read on Linux, in the
-   login keychain on macOS (not tried on a Mac) or in the user store on Windows. It prints every
+   login keychain on macOS (untested) or in the user store on Windows. It prints every
    command, marks the ones that need sudo, and does nothing the second time. On WSL it also prints
    the PowerShell step for the Windows store, which a Windows browser needs. `trust --dry-run` shows
    what it would do, and `trust --remove` undoes it.
@@ -58,11 +58,10 @@ the problem.
 - **Chrome says `ERR_CONNECTION_REFUSED` for a bare `local.snowglobe.at`.** Typed without a scheme,
   Chrome tries https and, when that fails, falls back to `http://`, which is port 80. A snowglobe
   publishes only 443, so the fallback is refused and hides the https failure behind it. Type
-  `https://local.snowglobe.at/` in full. If it then fails, the error shown is the real one. In our
-  run it opened at once once the name resolved; flush Chrome's lookups with
+  `https://local.snowglobe.at/` in full. If it then fails, the error shown is the real one. If
+  Chrome still shows an old failure after the name resolves, clear its cached lookups with
   `chrome://net-internals/#dns` ("Clear host cache") and `chrome://net-internals/#sockets` ("Flush
-  socket pools") when it still shows the old failure. Likely cause, not isolated: the earlier DNS
-  failure.
+  socket pools").
 - **A certificate warning, or a failure no click gets past.** The browser does not trust the CA. Run
   `snowglobe trust` and see [The CA](#the-ca). Firefox keeps its own store unless `trust`
   has put the CA in it.
@@ -129,10 +128,10 @@ address and any port but 443.
 `https://atmo.app.local.snowglobe.at` once atmo is routed ([Example: atmo](examples/atmo.md)).
 
 **When you are done**, turn the setting off. Do not leave it on while the snowglobe is down. With the
-proxy unreachable, the browser cannot fetch the PAC, and in Firefox set to "Automatic proxy configuration
-URL", ordinary sites such as reddit failed
-or crawled, not only the snowglobe's names. The fix was Settings, Network Settings, "No proxy". A
-separate Firefox profile for the snowglobe keeps everyday browsing from depending on it.
+proxy unreachable, the browser cannot fetch the PAC. Firefox set to "Automatic proxy configuration
+URL" then fails or slows down on ordinary sites too, not only on the snowglobe's names. To undo it,
+choose Settings, Network Settings, "No proxy". A separate Firefox profile for the snowglobe keeps
+everyday browsing from depending on it.
 
 `proxy.pac` leaves `plc.directory` alone, so the setting never moves the real directory for your
 everyday browsing; apps on the snowglobe use `https://plc.local.snowglobe.at`. For an app that insists on
@@ -189,22 +188,16 @@ trusts one checks the other's certificates against the wrong key and rejects the
 signature, which it will not let you click through. Delete the CA's `ca.*` and run `up` again only
 when you mean to start over, and remove the old one from the stores (`trust --remove` first).
 
-## What we saw
+## Tested setups
 
-These are observations, not requirements, with the date of each.
+- **Linux, with Docker, Firefox and Chrome on the same computer.** Public DNS answers `127.0.0.1` for
+  the snowglobe's names, so the browsers need only the CA.
+- **Windows, through the proxy.** Chrome with the Windows "Use setup script" setting, and Firefox with
+  either its own "Automatic proxy configuration URL" or "Use system proxy settings", reach the
+  network's page and a handle's own name. Firefox finds a CA added with `certutil`.
+- **A dev container, with full Chromium and Firefox set only to the PAC URL.** Both go from the
+  network's page to atmo and sign in through the alpha PDS's sign-in and consent pages, and no
+  request leaves the snowglobe.
 
-- **2026-10-22, Linux, Docker, Firefox and Chrome on the same computer:** public DNS answered
-  `127.0.0.1` for `local.`, `alpha.`, an unused name and an app name under `local.snowglobe.at`.
-- **2026-10-22, Firefox on Windows set to "Automatic proxy configuration URL", with Windows' own
-  setting off and the snowglobe down:** ordinary sites such as reddit failed or crawled. "No proxy"
-  fixed it. Chrome and Edge with the system setting were not measured.
-- **2026-10-19, Windows:** a Firefox set up with `certutil` found the trusted CA.
-- **2026-10-19, Windows:** Chrome through the Windows "Use setup script" setting (the PAC
-  then named a SOCKS5 proxy), and Firefox both through its own "Automatic proxy configuration URL" and
-  through "Use system proxy settings" (an HTTP proxy), reached the page and a handle's own name. Firefox
-  uses the Windows setting only when its Network Settings say "Use system proxy settings": with any other
-  choice it fetches no PAC and the snowglobe's names do not resolve. In the dev
-  container, full Chromium and Firefox set only to the PAC URL went from the page to atmo and signed in
-  through the alpha's sign-in and consent pages, asking no host outside the snowglobe, with either kind
-  of proxy. Not measured: Edge, macOS, Linux desktops. Playwright's default headless shell ignores
-  `--proxy-pac-url`; real Chrome and Edge are the full build.
+Not tested: Edge, macOS, and the proxy from a Linux desktop. Playwright's default headless shell
+ignores `--proxy-pac-url`, so use full Chromium, Chrome or Edge with a PAC.
