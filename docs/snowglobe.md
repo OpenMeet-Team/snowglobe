@@ -7,9 +7,9 @@ brings it up; with no file named, it uses the `snowglobe.yml` in this folder or 
 built for the real network runs against it with no test-only code.
 
 It runs on Linux, and on Windows under WSL 2; both are tested with `node scripts/smoke.mjs`
-([Test suite](testing.md#test-suite)). macOS is not supported yet: nobody working on it has a Mac to test on.
-If you have one, please try it and [open an issue](https://github.com/OpenMeet-Team/snowglobe/issues)
-with what broke, or that it worked; we'll add Mac support over time.
+([Test suite](testing.md#test-suite)). macOS is not supported yet. If you have a Mac, please try it
+and [open an issue](https://github.com/OpenMeet-Team/snowglobe/issues) with what broke, or that it
+worked.
 
 With `docs/examples/atmo.yml`, which has three PDSes (the default file has one, `main`, at `main.local.snowglobe.at`):
 
@@ -78,9 +78,10 @@ turns off what has no stand-in here: DNS lookups, Bluesky search and avatars, ba
 the public font host, link previews. Signing in uses a client at its own address, so editing records
 works against the snowglobe's PDSes.
 
-A record's Schema tab shows its lexicon when the authority holds it and pdsls's parser accepts it.
-Measured 2026-10-19: the opensocial proposal's lexicons (a `space` definition, a `space-ref` format)
-and atmo's permission set fail that parser, as they would on pds.ls; the record view is unaffected.
+A record's Schema tab shows its lexicon when the authority holds it and PDSls's parser accepts it.
+Some lexicons fail that parser, as they would on pds.ls. Examples are the opensocial proposal's
+lexicons (a `space` definition, a `space-ref` format) and atmo's permission set. The record view
+still works for them.
 
 ## The file and the commands
 
@@ -183,9 +184,7 @@ The commands, each `snowglobe <command>`:
 | `run [--app <name>] [--] <cmd>` | runs a command that reaches the snowglobe at the real network's names (Linux) |
 | `account`, `invite`, `lexicons`, `app` | make an app's own accounts, invite codes, lexicons and routes ([Tools for an app](your-app.md#tools-for-an-app)) |
 
-Exit 2 means
-the command was called wrong, 1 that the snowglobe refused, 3 that `up` or `down` refused the shared
-snowglobe.
+Exit 2 means the command was called wrong, and 1 that the snowglobe refused.
 
 ## Which snowglobe, and where it lives
 
@@ -215,9 +214,6 @@ because `alice` already exists; the PDS's log (`docker logs <globe>-pds-main-1`)
 delete the volumes and start clean, or give the file another `globe:` name.
 
 ## Up and down
-
-The scripts refuse the shared project `devnet-spaces` unless `SG_RESET_OK=1`, and exit before
-calling docker.
 
 ```bash
 snowglobe up --default   # certificates, then the services
@@ -250,16 +246,16 @@ keeps both, and so does a `down -v` that fails. If Docker cannot say whether a s
 one-shot `init` and `relay-init` run again. A rerun on a changed file stops what the file no longer
 runs. When a PDS, or nginx in front of it, started after the relay did, `up` restarts the relay
 before it returns: a relay that was running when a PDS went away can wait a long time before it
-redials it, so what the PDS writes meanwhile comes through late, or not for minutes. So a first
-`up` restarts it, after pass 2, and a rerun brings it back to a PDS that restarted. It refuses a PDS named for a handle ending an app
+redials it, so what the PDS writes meanwhile comes through late, or not for minutes. A first `up`
+starts the PDSes twice (below), so it restarts the relay once, and a rerun brings it back to a PDS
+that restarted. It refuses a PDS named for a handle ending an app
 claimed with `snowglobe app`, before it writes anything. It makes the leaf certificate if there is
 none, brings the stack up, makes the lexicon authority (`lex-authority.local.snowglobe.at` on the file's
 `lexicons.authority` PDS, the bare-handle PDS by default),
 brings the stack up again with `SG_LEXICON_AUTHORITY_DID` so every PDS starts with it. It writes no
 settings file for an app: `snowglobe env` prints them ([An app's settings](your-app.md#snowglobe-env-know-where-things-are)).
-The base init still seeds `alice` and `bob` and a 100-use `SG_INVITE_CODE`
-into `<state>/accounts.env`, on the PDS with bare handles (else the first), as it does for the http
-stacks. Nothing else is seeded.
+The base init seeds `alice` and `bob` and a 100-use `SG_INVITE_CODE`
+into `<state>/accounts.env`, on the PDS with bare handles (else the first). Nothing else is seeded.
 
 Published ports, all on the snowglobe's own loopback address: 443 (nginx), the proxy (`SG_PROXY_PORT`, 1080), the PLC (`SG_PLC_PORT`), Jetstream
 (`SG_JETSTREAM_PORT`, `SG_JETSTREAM_METRICS_PORT`) and maildev (`SG_MAILDEV_WEB_PORT`,

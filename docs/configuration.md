@@ -22,7 +22,6 @@ the snowglobe checkout. Every setting has a default.
 | `SG_SLINGSHOT_COMMIT` | `3137b07...` | The microcosm-rs commit Slingshot is built from ([Slingshot](how-it-works.md#slingshot-handles-and-dids-inside-the-network)) |
 | `SG_PREBUILT` | unset | `0` makes `up` build Slingshot, PDSls and the relay itself, never pulling a published image |
 | `SG_IMAGE_REGISTRY` | `ghcr.io/openmeet-team` | Where `up` looks for those published images; empty skips the pull. An image is used only when its label matches the files in your checkout, so an edited `stack/` folder is built |
-| `SG_RESET_OK` | unset | `1` lets `up` and `down` act on the shared project `devnet-spaces` |
 
 To run a second snowglobe beside another, give it a file with its own `globe:` name and run `snowglobe up`. It takes its own
 address, so the ports above do not clash and nothing needs setting. (On macOS only `127.0.0.1` exists until you add
