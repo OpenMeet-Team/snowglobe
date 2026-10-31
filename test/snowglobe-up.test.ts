@@ -5,7 +5,7 @@
 // checked by hand on an isolated copy.
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 // @ts-expect-error: a plain .mjs module, without types
@@ -197,11 +197,16 @@ describe('the name router', () => {
     expect(res.status).toBe(1);
     expect(res.stderr).toContain('compose project other');
     expect(dockerLog(r)).not.toContain('compose -p');
-    // A route whose project has no nginx up is stale, and no bar.
+    // A route whose project has no nginx up is stale, and no bar: it is dropped, since nginx
+    // refuses the whole config with two routes at one domain.
     unlinkSync(routes(r, 'other'));
     writeFileSync(routes(r, 'gone'), 'four.test 127.0.0.3 gone\n');
     sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0', SG_NGINX_WAIT: '1' });
     expect(dockerLog(r)).toContain('compose -p mine');
+    expect(existsSync(routes(r, 'gone'))).toBe(false);
+    const conf = readFileSync(join(r, '.local/share/snowglobe/.router/nginx.conf'), 'utf8');
+    expect(conf.match(/^\s+\.four\.test /gm)).toEqual([expect.stringContaining('.four.test')]);
+    expect(conf).toContain('.four.test 127.77.0.9:443;');
   });
 
   it.skipIf(!linux)('leaves the router alone for a globe on its own address, and says why', () => {
@@ -238,6 +243,11 @@ describe('the name router', () => {
     expect(res.status, res.stderr).toBe(0);
     expect(res.stdout).toContain('Name router on 127.0.0.1:443: not running, routing four.test to four');
     expect(res.stdout).not.toMatch(/^\.router/m);
+    // A route can outlive its state folder; ls still shows it.
+    rmSync(state(r), { recursive: true });
+    const none = sg(r, ['ls']);
+    expect(none.stdout).toContain('No snowglobes in');
+    expect(none.stdout).toContain('routing four.test to four');
   });
 });
 

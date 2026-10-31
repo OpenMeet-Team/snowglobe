@@ -23,8 +23,10 @@ Changes to the default stack that existing setups will notice:
   holds the router's address, so the router does not start while it runs: `snowglobe down` it and
   `up` it again to move it. `down` takes the router away with the last snowglobe, and `snowglobe ls`
   ends with what it routes. Two snowglobes cannot be up at one domain; `up` refuses the second. The
-  router runs on Linux, WSL 2 included. Elsewhere, or with `SG_ROUTER=off`, a snowglobe publishes on
-  `127.0.0.1` as before, and only that one is reached by name.
+  router runs on Linux with Docker Engine, WSL 2 included; Docker Desktop is not tested. Elsewhere, or
+  with `SG_ROUTER=off`, there is no router: a new snowglobe takes the first free address from
+  `127.0.0.1` as before, and only the one on `127.0.0.1` is reached by name (`SG_BIND=127.0.0.1` puts
+  one there).
 - **Breaking: `snowglobe run` no longer maps names, or sends `plc.directory` to the snowglobe.** It
   hands the command the app's settings and the CA, and needs no bubblewrap. The names resolve for every
   program through public DNS and the router, so `HTTPS_RUN_EXTRA_NAMES` and the hosts file `run`

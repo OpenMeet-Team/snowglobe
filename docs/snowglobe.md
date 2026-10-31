@@ -100,8 +100,10 @@ globe works too, where the cluster's gateway routes by name.
 
 `snowglobe up` adds the snowglobe's route and starts the router if it is not running; `snowglobe down`
 takes the route away, and the router with the last one. `snowglobe ls` ends with a line saying whether
-it runs and what it routes. It runs on Linux, WSL 2 included. On other systems, or with `SG_ROUTER=off`,
-a snowglobe publishes on `127.0.0.1` as before 0.5.0, and only that one is reached by name. A snowglobe
+it runs and what it routes. It runs on Linux with Docker Engine, WSL 2 included; Docker Desktop is not
+tested. On other systems, or with `SG_ROUTER=off`, there is no router: a new snowglobe takes the first
+free address from `127.0.0.1` as before 0.5.0, and only the one on `127.0.0.1` is reached by name
+(`SG_BIND=127.0.0.1` puts one there). A snowglobe
 on `127.0.0.1` (set with `SG_BIND`, or made before 0.5.0 and still running) holds the router's address,
 so the router does not start while it runs, and `up` says how to move it.
 

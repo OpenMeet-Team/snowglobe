@@ -13,10 +13,12 @@ the app. The rest is the snowglobe's own tools.
 
 ## The snowglobe
 
-Start from [`snowglobe.default.yml`](../../snowglobe.default.yml) and add the app
+Start from [`snowglobe.default.yml`](../../snowglobe.default.yml), name the globe, and add the app
 ([`statusphere.yml`](statusphere.yml) is the whole file):
 
 ```yaml
+globe: statusphere
+
 services:
   tap:
     webhook: ${apps.statusphere.url}/api/webhook
@@ -28,13 +30,14 @@ apps:
     env:
       PUBLIC_URL: ${apps.statusphere.url}
       HANDLE_RESOLVER_URL: ${pds.main.url}
+      PLC_DIRECTORY_URL: ${services.plc.url}
       TAP_URL: ${services.tap.url}
 ```
 
 `PUBLIC_URL` makes the app use an https client ID, `https://statusphere.app.statusphere.local.snowglobe.at/oauth-client-metadata.json`
 (the file's domain is `statusphere.local.snowglobe.at`, from its `globe:` line).
 A PDS in Docker will not fetch a loopback client ID (`http://127.0.0.1:3000`), which is the one the app
-uses without it. `HANDLE_RESOLVER_URL` is the change below. `services.tap` turns Tap on and tells it to send
+uses without it. `HANDLE_RESOLVER_URL` and `PLC_DIRECTORY_URL` are for the changes below. `services.tap` turns Tap on and tells it to send
 the app the events of `xyz.statusphere.status` at the app's `/api/webhook`; the app reads Tap at `TAP_URL`
 (`http://<SG_BIND>:2480`, on the snowglobe's own address; `SG_TAP_PORT` changes the port). `snowglobe check` refuses a webhook
 that names an app the file does not have.

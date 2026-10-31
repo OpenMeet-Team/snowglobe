@@ -212,7 +212,9 @@ describe('chooseBind', () => {
 
   it('skips an address something answers on, even one no snowglobe kept', async () => {
     const t = top();
-    expect(await chooseBind(mine(t, 'two', { listening: async (a: string) => a === '127.0.0.1' }))).toBe('127.0.0.2');
+    // 127.0.0.2: with the router, 127.0.0.1 is never a choice, so a probe there would show nothing.
+    expect(await chooseBind(mine(t, 'two', { listening: async (a: string) => a === '127.0.0.2' }))).toBe('127.0.0.3');
+    expect(await chooseBind(mine(t, 'mac', { platform: 'darwin', listening: async (a: string) => a === '127.0.0.1' }))).toBe('127.0.0.2');
   });
 
   it('keeps a running snowglobe from before on 127.0.0.1, though something answers there: it is itself', async () => {

@@ -9,7 +9,8 @@ answers every name under `local.snowglobe.at`, at any depth, with `127.0.0.1`. T
 starts the name router, one for the whole machine, which reads the name each connection asks for and
 passes the connection, still encrypted, to the snowglobe whose domain the name is under. So a browser
 reaches every snowglobe on the machine at once, by name, and a handle made a second ago works, with no
-proxy, hosts file or launch flag. The router runs on Linux, WSL 2 included.
+proxy, hosts file or launch flag. The router runs on Linux with Docker Engine, WSL 2 included; Docker
+Desktop is not tested.
 
 ## Docker on the same computer as the browser
 
@@ -146,4 +147,4 @@ when you mean to start over, and remove the old one from the stores (`trust --re
 - **Windows.** Firefox finds a CA added with `certutil`.
 
 Not tested: a desktop browser through the name router (Linux, a Windows browser with Docker in WSL 2,
-or one through a forwarded port 443), Edge, and macOS.
+or one through a forwarded port 443), the router with Docker Desktop, Edge, and macOS.
