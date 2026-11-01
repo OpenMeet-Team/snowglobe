@@ -91,15 +91,18 @@ still works for them.
 ## The name router
 
 One name router serves every snowglobe on the machine: a stock nginx (the image each snowglobe's nginx
-runs) in a container named `snowglobe-router`, on the host's network at `127.0.0.1:443`. It reads the
-name each TLS connection asks for and passes the connection, still encrypted, to the snowglobe whose
-domain the name is under, on that snowglobe's own address; each snowglobe's nginx serves its own
-certificate. The longest domain wins, so a snowglobe still on the shared `local.snowglobe.at` keeps
-working beside ones under it, and a name under no snowglobe's domain is closed. It is how a hosted
-globe works too, where the cluster's gateway routes by name.
+runs) in an ordinary container named `snowglobe-router`, with port 443 published on `127.0.0.1`. It reads
+the name each TLS connection asks for and passes the connection, still encrypted, to the nginx of the
+snowglobe whose domain the name is under, which it reaches by container name on that snowglobe's
+Docker network; each snowglobe's nginx serves its own certificate. The longest domain wins, so a
+snowglobe still on the shared `local.snowglobe.at` keeps working beside ones under it, and a name under
+no snowglobe's domain is closed. It is how a hosted globe works too, where the cluster's gateway routes
+by name. Because it needs only a published port, it needs no Docker setting.
 
-`snowglobe up` adds the snowglobe's route and starts the router if it is not running; `snowglobe down`
-takes the route away, and the router with the last one. `snowglobe ls` ends with a line saying whether
+`snowglobe up` adds the snowglobe's route, joins the router to the snowglobe's network and starts the
+router if it is not running; `snowglobe down` takes the route away and the router off that network
+before compose removes it, and removes the router with the last route. Snowglobe puts nothing else
+on the router's own network, `snowglobe-router`. `snowglobe ls` ends with a line saying whether
 it runs and what it routes. It runs on Linux with Docker Engine, WSL 2 included; Docker Desktop is not
 tested. On other systems, or with `SG_ROUTER=off`, there is no router: a new snowglobe takes the first
 free address from `127.0.0.1` as before 0.5.0, and only the one on `127.0.0.1` is reached by name

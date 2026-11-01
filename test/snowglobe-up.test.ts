@@ -42,7 +42,7 @@ describe('what up writes', () => {
 // into the state under HOME (~/.local/share/snowglobe/four), and a docker on PATH that writes what
 // it was asked to docker.log and fails, unless SHIM_EXIT says otherwise: a guard that let up
 // through then ends the run at once instead of waiting on a globe. It says the name router is
-// running once it was run (router.up), and that the project named other has an nginx up.
+// running once it was started (router.up), and that the project named other has an nginx up.
 function globeRoot() {
   // realpath: on macOS tmpdir() is under /var, a link to /private/var, which is what a command's cwd reports.
   const r = mkdtempSync(join(realpathSync(tmpdir()), 'snowglobe-up-'));
@@ -60,10 +60,14 @@ function globeRoot() {
     [
       '#!/bin/sh',
       `echo "$*" >> ${join(r, 'docker.log')}`,
+      // A command starting with SHIM_FAIL fails.
+      '[ -n "$SHIM_FAIL" ] && case "$*" in "$SHIM_FAIL"*) exit 1;; esac',
       'case "$*" in',
       `  *'ps -a --format'*) echo 'exited 0';;`,
-      `  'inspect -f '*' snowglobe-router') [ -f ${up} ] && echo 'true|' && exit 0;;`,
-      `  'run -d --name snowglobe-router'*) touch ${up};;`,
+      // Running, on its own network, joined to the networks of four and two.
+      `  'inspect --type container -f '*' snowglobe-router') [ -f ${up} ] && echo 'true||snowglobe-router|snowglobe-router four_snowglobe two_snowglobe ' && exit 0;;`,
+      `  'network ls'*) printf 'mine_snowglobe\\nfour_snowglobe\\ntwo_snowglobe\\n';;`,
+      `  'start snowglobe-router') touch ${up};;`,
       `  'rm -f snowglobe-router') rm -f ${up};;`,
       `  *'com.docker.compose.project=other'*) echo 0123abcd; exit 0;;`,
       'esac',
@@ -174,19 +178,26 @@ describe('snowglobe up and down', () => {
 describe('the name router', () => {
   const routes = (r: string, f = '') => join(r, '.local/share/snowglobe/.router/routes', f);
 
-  it.skipIf(!linux)('up routes the globe\'s domain to its address, and starts the router after pass 1', () => {
+  it.skipIf(!linux)('up routes the globe\'s domain to its nginx, joins its network, and starts the router after pass 1', () => {
     const r = globeRoot();
     // nginx never answers at 127.77.0.9, so up stops at the wait after the router step.
     sg(r, ['up'], { SG_PROJECT: 'mine', SHIM_EXIT: '0', SG_NGINX_WAIT: '1' });
     // Keyed by the compose project, which is what is unique on a machine.
     expect(readFileSync(routes(r, 'mine'), 'utf8')).toBe('four.test 127.77.0.9 four\n');
     const conf = readFileSync(join(r, '.local/share/snowglobe/.router/nginx.conf'), 'utf8');
-    expect(conf).toContain('.four.test 127.77.0.9:443;');
+    expect(conf).toContain('.four.test mine-nginx-1:443;');
     const log = dockerLog(r).split('\n');
-    const run = log.findIndex((l) => l.startsWith('run -d --name snowglobe-router'));
-    expect(run).toBeGreaterThan(log.findIndex((l) => l.endsWith('up -d --remove-orphans')));
-    expect(log[run]).toContain('--network host');
-    expect(log[run]).toContain(`${join(r, '.local/share/snowglobe/.router')}:/etc/snowglobe-router:ro`);
+    const create = log.findIndex((l) => l.startsWith('create --name snowglobe-router'));
+    const joined = log.indexOf('network connect mine_snowglobe snowglobe-router');
+    const start = log.indexOf('start snowglobe-router');
+    expect(create).toBeGreaterThan(log.findIndex((l) => l.endsWith('up -d --remove-orphans')));
+    expect(joined).toBeGreaterThan(create);
+    expect(start).toBeGreaterThan(joined);
+    // An ordinary container: a published port, on a network of its own.
+    expect(log[create]).toContain('-p 127.0.0.1:443:443');
+    expect(log[create]).toContain('--network snowglobe-router');
+    expect(log[create]).not.toContain('--network host');
+    expect(log[create]).toContain(`${join(r, '.local/share/snowglobe/.router')}:/etc/snowglobe-router:ro`);
   });
 
   it.skipIf(!linux)('up refuses a domain another running snowglobe is routed at, before any compose command', () => {
@@ -206,7 +217,7 @@ describe('the name router', () => {
     expect(existsSync(routes(r, 'gone'))).toBe(false);
     const conf = readFileSync(join(r, '.local/share/snowglobe/.router/nginx.conf'), 'utf8');
     expect(conf.match(/^\s+\.four\.test /gm)).toEqual([expect.stringContaining('.four.test')]);
-    expect(conf).toContain('.four.test 127.77.0.9:443;');
+    expect(conf).toContain('.four.test mine-nginx-1:443;');
   });
 
   it.skipIf(!linux)('leaves the router alone for a globe on its own address, and says why', () => {
@@ -217,7 +228,7 @@ describe('the name router', () => {
     expect(dockerLog(r)).not.toContain('snowglobe-router');
   });
 
-  it.skipIf(!linux)('down stops routing to the globe, and removes the router with the last route', () => {
+  it.skipIf(!linux)('down stops routing to the globe and leaves its network before compose takes it down, and removes the router with the last route', () => {
     const r = globeRoot();
     mkdirSync(routes(r), { recursive: true });
     writeFileSync(routes(r, 'four'), 'four.test 127.77.0.9 four\n');
@@ -225,14 +236,35 @@ describe('the name router', () => {
     writeFileSync(join(r, 'router.up'), '');
     expect(sg(r, ['down'], { SHIM_EXIT: '0' }).status).toBe(0);
     expect(existsSync(routes(r, 'four'))).toBe(false);
-    expect(dockerLog(r)).toContain('exec snowglobe-router nginx -s reload');
+    let log = dockerLog(r).split('\n');
+    const composeDown = () => log.findIndex((l) => l.startsWith('compose -p four ') && l.includes(' down '));
+    expect(log).toContain('exec snowglobe-router nginx -s reload -c /etc/snowglobe-router/nginx.conf');
+    // Compose cannot remove a network the router is still joined to.
+    expect(log.indexOf('network disconnect four_snowglobe snowglobe-router')).toBeGreaterThan(-1);
+    expect(log.indexOf('network disconnect four_snowglobe snowglobe-router')).toBeLessThan(composeDown());
+    expect(log).not.toContain('network disconnect two_snowglobe snowglobe-router');
     expect(readFileSync(join(r, '.local/share/snowglobe/.router/nginx.conf'), 'utf8')).not.toContain('four.test');
-    // The last one.
+    // The last one: the router and its network go, before compose.
+    writeFileSync(join(r, 'docker.log'), '');
     writeFileSync(routes(r, 'four'), 'four.test 127.77.0.9 four\n');
     unlinkSync(routes(r, 'two'));
     expect(sg(r, ['down'], { SHIM_EXIT: '0' }).status).toBe(0);
-    expect(dockerLog(r)).toContain('rm -f snowglobe-router');
+    log = dockerLog(r).split('\n');
+    expect(log.indexOf('rm -f snowglobe-router')).toBeGreaterThan(-1);
+    expect(log.indexOf('network rm snowglobe-router')).toBeGreaterThan(log.indexOf('rm -f snowglobe-router'));
+    expect(log.indexOf('network rm snowglobe-router')).toBeLessThan(composeDown());
     expect(existsSync(join(r, 'router.up'))).toBe(false);
+  });
+
+  it.skipIf(!linux)('down takes the globe down when the router cannot leave its network, then fails', () => {
+    const r = globeRoot();
+    mkdirSync(routes(r), { recursive: true });
+    writeFileSync(routes(r, 'four'), 'four.test 127.77.0.9 four\n');
+    writeFileSync(routes(r, 'two'), 'two.local.snowglobe.at 127.0.0.3 two\n');
+    writeFileSync(join(r, 'router.up'), '');
+    const res = sg(r, ['down'], { SHIM_EXIT: '0', SHIM_FAIL: 'network disconnect' });
+    expect(res.status).not.toBe(0);
+    expect(dockerLog(r)).toMatch(/^compose -p four .* down --remove-orphans$/m);
   });
 
   it('ls names the router and what it routes, and lists no snowglobe for its folder', () => {
