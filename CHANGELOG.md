@@ -2,6 +2,16 @@
 
 Changes to the default stack that existing setups will notice:
 
+## Unreleased
+
+- **The name router is an ordinary container, so it can be reached on Docker Desktop.** It ran on the
+  host's network, which on Docker Desktop is Docker's own VM, so `up` said it had started while
+  nothing on the computer could reach it. It now publishes port 443 on `127.0.0.1`, on a network of
+  its own (`snowglobe-router`), and joins the network of each snowglobe it routes, where it reaches
+  that snowglobe's nginx by container name. It needs no Docker setting. Nothing to do: the next `up`
+  replaces a router from 0.5.0. `down` takes the router off a snowglobe's network before compose
+  removes it. Each snowglobe still publishes its own ports on its own `127.0.0.N`, as before.
+
 ## v0.5.0 (2026-10-31)
 
 - **Breaking: each local snowglobe has a domain of its own, `<globe>.local.snowglobe.at`.** A file
