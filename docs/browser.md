@@ -9,8 +9,8 @@ answers every name under `local.snowglobe.at`, at any depth, with `127.0.0.1`. T
 starts the name router, one for the whole machine, which reads the name each connection asks for and
 passes the connection, still encrypted, to the snowglobe whose domain the name is under. So a browser
 reaches every snowglobe on the machine at once, by name, and a handle made a second ago works, with no
-proxy, hosts file or launch flag. The router runs on Linux with Docker Engine, WSL 2 included; Docker
-Desktop is not tested.
+proxy, hosts file or launch flag. The router runs where the `snowglobe` command runs on Linux, WSL 2
+included, with Docker Engine or Docker Desktop; on macOS there is none yet.
 
 ## Docker on the same computer as the browser
 
@@ -31,7 +31,12 @@ That is all. Two cases break it:
 - Something else on `127.0.0.1:443`. The name router cannot start there, and `up` says so. One
   case is a snowglobe still running on `127.0.0.1` itself: one made before 0.5.0, or one started with
   `SG_BIND=127.0.0.1`. Only that snowglobe is reached by name while it runs; `snowglobe down` it, and
-  `up` it again without `SG_BIND`, to move it to an address of its own.
+  `up` it again without `SG_BIND`, to move it to an address of its own. Another is an editor that
+  forwards a dev container's port 443 to this computer, such as VS Code's Ports view: it holds
+  `127.0.0.1:443` while the forward is on, so one computer reaches by name either the snowglobes in
+  that container or its own, not both. Stop the forward, then run `up` again. On Windows,
+  `Get-NetTCPConnection -LocalPort 443` names the process that holds the port, which `netstat` may
+  not show.
 
 `plc.directory` is the real directory, for a browser as for every other program. An app on the
 snowglobe is told the snowglobe's own PLC, `https://plc.<domain>` ([Your app in a snowglobe](your-app.md)).
