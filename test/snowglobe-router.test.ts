@@ -142,19 +142,27 @@ describe('syncRouter', () => {
     expect(readFileSync(join(d, 'nginx.conf'), 'utf8')).toBe(routerConfig([A]));
   });
 
-  it('reloads a running router, joining a new snowglobe\'s network before and leaving an unrouted one\'s after', async () => {
+  it('reloads a running router, after joining a new snowglobe\'s network and leaving an unrouted one\'s', async () => {
     const d = dir();
     writeRoute(d, A);
     writeRoute(d, B);
     const f = fakeDocker('running', { joined: [ROUTER_NETWORK, 'mvpa_snowglobe', 'gone_snowglobe'] });
     await syncRouter({ dir: d, docker: f.docker, wait: 0 });
-    expect(f.verbs()).toEqual(['inspect', 'network ls', 'network connect', 'exec', 'network disconnect']);
+    expect(f.verbs()).toEqual(['inspect', 'network ls', 'network connect', 'network disconnect', 'exec']);
     expect(f.call('network connect')![2]).toBe('mvpb_snowglobe');
     // With the config named, so the reload fails when nginx would refuse it.
     expect(f.call('exec')).toEqual(['exec', ROUTER_CONTAINER, 'nginx', '-s', 'reload', '-c', '/etc/snowglobe-router/nginx.conf']);
     expect(f.call('network disconnect')![2]).toBe('gone_snowglobe');
     expect(f.joined().sort()).toEqual([ROUTER_NETWORK, 'mvpa_snowglobe', 'mvpb_snowglobe'].sort());
     expect(readFileSync(join(d, 'nginx.conf'), 'utf8')).toContain('.mvpb.local.snowglobe.at');
+  });
+
+  it('leaves an unrouted snowglobe\'s network even when the reload fails, so compose can still remove it', async () => {
+    const d = dir();
+    writeRoute(d, A);
+    const f = fakeDocker('running', { joined: [ROUTER_NETWORK, 'mvpa_snowglobe', 'mvpb_snowglobe'], fails: ['exec'] });
+    await expect(syncRouter({ dir: d, docker: f.docker, wait: 0 })).rejects.toThrow(/docker exec/);
+    expect(f.joined().sort()).toEqual([ROUTER_NETWORK, 'mvpa_snowglobe'].sort());
   });
 
   it('makes a stopped router again, since it may be joined to a network that is gone', async () => {

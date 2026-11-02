@@ -267,6 +267,29 @@ describe('the name router', () => {
     expect(dockerLog(r)).toMatch(/^compose -p four .* down --remove-orphans$/m);
   });
 
+  it.skipIf(!linux)('down says the globe is no longer routed when compose fails after the route went', () => {
+    const r = globeRoot();
+    mkdirSync(routes(r), { recursive: true });
+    writeFileSync(routes(r, 'four'), 'four.test 127.77.0.9 four\n');
+    writeFileSync(routes(r, 'two'), 'two.local.snowglobe.at 127.0.0.3 two\n');
+    writeFileSync(join(r, 'router.up'), '');
+    const res = sg(r, ['down'], { SHIM_EXIT: '0', SHIM_FAIL: 'compose' });
+    expect(res.status).not.toBe(0);
+    expect(existsSync(routes(r, 'four'))).toBe(false);
+    expect(res.stderr).toContain('the name router no longer routes to it');
+  });
+
+  it.skipIf(!linux)('down reports the router failing as well when compose cannot run at all', () => {
+    const r = globeRoot();
+    mkdirSync(routes(r), { recursive: true });
+    writeFileSync(routes(r, 'four'), 'four.test 127.77.0.9 four\n');
+    writeFileSync(routes(r, 'two'), 'two.local.snowglobe.at 127.0.0.3 two\n');
+    // No docker on PATH: the router and compose both fail to start it.
+    const res = sg(r, ['down'], {}, mkdtempSync(join(tmpdir(), 'snowglobe-no-docker-')));
+    expect(res.status).not.toBe(0);
+    expect(res.stderr).toContain('The name router failed too');
+  });
+
   it('ls names the router and what it routes, and lists no snowglobe for its folder', () => {
     const r = globeRoot();
     mkdirSync(routes(r), { recursive: true });

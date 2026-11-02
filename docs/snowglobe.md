@@ -103,8 +103,9 @@ by name. Because it needs only a published port, it needs no Docker setting.
 router if it is not running; `snowglobe down` takes the route away and the router off that network
 before compose removes it, and removes the router with the last route. Snowglobe puts nothing else
 on the router's own network, `snowglobe-router`. `snowglobe ls` ends with a line saying whether
-it runs and what it routes. It runs on Linux with Docker Engine, WSL 2 included; Docker Desktop is not
-tested. On other systems, or with `SG_ROUTER=off`, there is no router: a new snowglobe takes the first
+it runs and what it routes. It runs where the `snowglobe` command runs on Linux, WSL 2 included, with
+Docker Engine or Docker Desktop. On macOS, on Windows outside WSL 2, or with `SG_ROUTER=off`, there is
+no router: a new snowglobe takes the first
 free address from `127.0.0.1` as before 0.5.0, and only the one on `127.0.0.1` is reached by name
 (`SG_BIND=127.0.0.1` puts one there). A snowglobe
 on `127.0.0.1` (set with `SG_BIND`, or made before 0.5.0 and still running) holds the router's address,

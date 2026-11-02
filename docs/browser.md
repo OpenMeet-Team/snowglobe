@@ -9,8 +9,8 @@ answers every name under `local.snowglobe.at`, at any depth, with `127.0.0.1`. T
 starts the name router, one for the whole machine, which reads the name each connection asks for and
 passes the connection, still encrypted, to the snowglobe whose domain the name is under. So a browser
 reaches every snowglobe on the machine at once, by name, and a handle made a second ago works, with no
-proxy, hosts file or launch flag. The router runs on Linux with Docker Engine, WSL 2 included; Docker
-Desktop is not tested.
+proxy, hosts file or launch flag. The router runs where the `snowglobe` command runs on Linux, WSL 2
+included, with Docker Engine or Docker Desktop; on macOS there is none yet.
 
 ## Docker on the same computer as the browser
 
