@@ -16,9 +16,10 @@ Changes to the default stack that existing setups will notice:
   which collection, and nginx sends that one path on `relay.<domain>` to it. It is built from the
   relay's indigo commit with two small patches to its crawl (private addresses, and a rate limit it
   never read). It follows the relay's firehose, and `relay-init` has it crawl each PDS, so accounts
-  that wrote before it started are listed too. The first `up` after upgrading builds its image,
-  unless one is published for the release. `collectiondir` is now a reserved name, so a PDS or group
-  host can no longer be called `collectiondir`.
+  that wrote before it started are listed too. Its admin token is a new secret,
+  `SG_COLLECTIONDIR_ADMIN_TOKEN`, which `up` makes like the others. The first `up` after upgrading
+  builds its image, unless one is published for the release. `collectiondir` is now a reserved
+  name, so a PDS or group host can no longer be called `collectiondir`.
 
 ## v0.5.0 (2026-10-31)
 

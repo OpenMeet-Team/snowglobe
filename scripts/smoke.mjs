@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The whole snowglobe sequence on this machine, end to end: check, up, account on two PDSes,
 // invite, lexicons, env and run (the app's settings), app add, run (names, the CA, each PDS's
-// health and the app), app --remove,
+// health and the app, the relay's listing by collection), app --remove,
 // down -v. One line per step, ok or FAIL, and exit 0 only when every step passed. Nothing secret
 // is printed: accounts print their DID, invite and lexicons print nothing a login needs.
 //
@@ -178,6 +178,25 @@ try {
     Promise.all(urls.map((u) => fetch(u).then((r) => r.status, (e) => e.cause?.code ?? e.message))).then((s) => console.log(s.join(' ')));`;
   r = run([process.execPath, '-e', fetches]);
   step('run: health of each PDS, and the app', r.stdout?.trim() === '200 200 200 200', r.stdout?.trim() || why(r));
+
+  // The relay's name answers listReposByCollection (from collectiondir): the lexicon authority's
+  // schemas, published above, list its repo. Indexing follows the firehose, so allow a few seconds.
+  const listed = `
+    const u = 'https://relay.${wantDomain}/xrpc/com.atproto.sync.listReposByCollection?collection=com.atproto.lexicon.schema';
+    (async () => {
+      let last = 'empty';
+      for (let i = 0; i < 20; i++) {
+        try {
+          const r = await fetch(u);
+          last = String(r.status);
+          if (r.ok && (await r.json()).repos?.length) return console.log('listed');
+        } catch (e) { last = e.cause?.code ?? e.message; }
+        await new Promise((ok) => setTimeout(ok, 1000));
+      }
+      console.log(last);
+    })();`;
+  r = run([process.execPath, '-e', listed]);
+  step('run: the relay lists repos by collection', r.stdout?.trim() === 'listed', r.stdout?.trim() || why(r));
 
   r = sg(['app', '--remove', 'smokeapp']);
   step('app --remove', r.status === 0, why(r));

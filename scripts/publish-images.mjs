@@ -18,7 +18,7 @@ import { PUBLISHED, REGISTRY, SOURCE_LABEL, sourceHash } from '../lib/prebuilt.m
 import { loadBase, renderGlobe } from '../lib/render.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SECRET_NAMES = ['SG_PDS_ADMIN_PASSWORD', 'SG_PDS_JWT_SECRET', 'SG_PLC_ROTATION_KEY', 'SG_RELAY_ADMIN_PASSWORD', 'SG_DB_PASSWORD'];
+const SECRET_NAMES = ['SG_PDS_ADMIN_PASSWORD', 'SG_PDS_JWT_SECRET', 'SG_PLC_ROTATION_KEY', 'SG_RELAY_ADMIN_PASSWORD', 'SG_COLLECTIONDIR_ADMIN_TOKEN', 'SG_DB_PASSWORD'];
 const push = process.argv.includes('--push');
 const dry = process.argv.includes('--dry-run');
 const registry = process.env.SG_IMAGE_REGISTRY ?? REGISTRY;

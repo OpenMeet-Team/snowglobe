@@ -26,14 +26,19 @@
   indigo's directory of which accounts hold records in which collection, built from the relay's
   indigo commit (`stack/collectiondir/Dockerfile`) with two patches: one like the relay's, because
   its crawl refuses private addresses too, and one so its crawl reads its own rate limit, without
-  which it stalls after the first page. It reads the relay's firehose from its first start, and
-  `relay-init` has it crawl each PDS, so an account that wrote before it started is listed too.
+  which it stalls after the first page. Only that path reaches it; its admin API stays on the
+  compose network. It reads the relay's firehose from its first start, and `relay-init` has it
+  crawl each PDS, so an account that wrote before it started is listed too. `relay-init` gives
+  every PDS to the relay first and never waits on `collectiondir`, so a directory that is down
+  leaves the relay, Jetstream and Tap as they were.
 - **Tap runs in the DNS container's network** (`tap-dns`), whose DNS answers every name under the
   domain with nginx. That is how Tap reaches an app's https name to send it events, and checks a
   handle (`alice.<domain>`) at its own name. Tap's port is published on the snowglobe's address, `SG_BIND`, at `<SG_TAP_PORT>` (2480)
-  from that container. Tap finds an account when it writes in the signal collection; its crawl of
-  that collection's repos is refused by the PDS (HTTP 401), so a repo written before Tap started is
-  found when it next writes, and then its whole repo is fetched. That is how the Tap image this
+  from that container. Tap finds an account when it writes in the signal collection. Its crawl of
+  that collection's repos asks its relay, which inside the network is the relay itself
+  (`http://relay:2470`, HTTP 404) or, with no relay, the PDS (HTTP 401); only `relay.<domain>` sends
+  that request to `collectiondir`. So a repo written before Tap started is found when it next
+  writes, and then its whole repo is fetched. That is how the Tap image this
   snowglobe pins behaves (indigo revision `4f47add4`).
 - **Jetstream** is at `ws://<SG_BIND>:<SG_JETSTREAM_PORT>` (the snowglobe's own address) and at `wss://jetstream.<domain>`, reading the relay over the Docker network, so the relay
   runs even with one PDS: at start Jetstream asks the relay for the network's hosts, which a PDS refuses. It is
