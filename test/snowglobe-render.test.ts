@@ -137,6 +137,15 @@ describe('snowglobe render', () => {
     expect(conf).toMatch(/server_name relay\.mine\.test;\s+location \/ \{\s+set \$upstream http:\/\/relay:2470;/);
   });
 
+  it('gives every service the page lists a health route, so none shows as down for want of one', () => {
+    const { files } = render({ ...THREE, services: { relay: true, tap: true, pdsls: true, cdn: true } });
+    const routes = readFileSync(join(ROOT, 'stack/page/snowglobe.conf'), 'utf8') + files['nginx/page.inc'];
+    const have = new Set([...routes.matchAll(/location = \/health\/([a-z0-9-]+) /g)].map((m) => m[1]));
+    const listed: string[][] = JSON.parse(files['page.json']).services;
+    expect(listed.map((s) => s[0])).toContain('Image CDN');
+    for (const [label, , key] of listed) expect(have.has(key), `${label}: /health/${key}`).toBe(true);
+  });
+
   it('gives the page health and accounts for every PDS, and the seed PDS at /health/pds', () => {
     const { files } = render({ ...FOUR, pds: [PDS('regular'), PDS('alpha', { bare_handles: true }), PDS('beta')] });
     const inc = files['nginx/page.inc'];
@@ -210,8 +219,8 @@ describe('snowglobe render', () => {
     const { compose, files, env } = render({ ...THREE, services: { cdn: true } });
     const cdn = compose.services.cdn;
     // It finds an account's PDS on the globe's directory and fetches the blob over TLS at the PDS's
-    // own name, which inside the network is nginx, so it trusts the globe's CA.
-    expect(cdn.environment).toMatchObject({ CDN_PLC_URL: 'http://plc:2582', CDN_DOMAIN: 'mine.test', NODE_EXTRA_CA_CERTS: '/https/ca.crt' });
+    // own name, connecting to nginx for every name under the domain, so it trusts the globe's CA.
+    expect(cdn.environment).toMatchObject({ CDN_PLC_URL: 'http://plc:2582', CDN_DOMAIN: 'mine.test', CDN_UPSTREAM: 'nginx:443', NODE_EXTRA_CA_CERTS: '/https/ca.crt' });
     expect(cdn.volumes).toContain(`${dirname(STATE)}/ca/ca.crt:/https/ca.crt:ro`);
     expect(cdn.networks).toEqual(['snowglobe']);
     expect(Object.keys(cdn.depends_on).sort()).toEqual(['nginx', 'plc']);

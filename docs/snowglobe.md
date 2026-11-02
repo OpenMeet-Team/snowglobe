@@ -97,8 +97,9 @@ PDSes, so on a snowglobe those images are broken. With `services.cdn: true`, `ht
 answers the same paths: it finds the account's PDS on the network's PLC directory and serves the blob
 from there, as stored (the preset and format are accepted and ignored). An app that takes its image
 CDN as a setting points it at `${services.cdn.url}` and keeps its image template. It serves images
-and videos only, refuses a `did:web` or a PDS outside the domain, so it never fetches from outside
-the network, and keeps nothing but each account's PDS, for ten minutes. `stack/cdn/` builds it,
+only, as Bluesky's does, up to 10 MiB. It refuses a `did:web` or a PDS outside the domain and follows
+no redirect, so it never fetches from outside the network, and keeps nothing but each account's PDS,
+for ten minutes. `stack/cdn/` builds it,
 with no dependencies but Node.
 
 ## The name router
@@ -170,8 +171,8 @@ apps:
 
 `snowglobe check` says what is wrong with a file, one line per problem, and touches
 nothing. A name used twice, a PDS named like a service, an app's handle ending that is a PDS's
-name, a handle longer than DNS allows: each fails here, before anything starts. `hosted`, an
-and an app's `hosted` are read and checked for a snowglobe hosted on a server; a local snowglobe does
+name, a handle longer than DNS allows: each fails here, before anything starts. `hosted` and
+an app's `hosted` are read and checked for a snowglobe hosted on a server; a local snowglobe does
 not use them. A hosted snowglobe, such as lighthouse, also runs one PDS and
 one group host today, whatever its file lists.
 
