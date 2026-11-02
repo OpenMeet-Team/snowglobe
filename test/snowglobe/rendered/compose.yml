@@ -251,6 +251,42 @@ services:
       retries: 10
     networks:
       - snowglobe
+  collectiondir:
+    build:
+      context: ./stack/collectiondir
+      args:
+        INDIGO_COMMIT: ${SG_RELAY_INDIGO_COMMIT:-${DEVNET_RELAY_INDIGO_COMMIT:-b2619d864df00a66455bd9f5f0c83c1ac13ad73d}}
+    image: snowglobe-collectiondir:${SG_RELAY_INDIGO_COMMIT:-b2619d864df00a66455bd9f5f0c83c1ac13ad73d}
+    restart: unless-stopped
+    depends_on:
+      relay:
+        condition: service_healthy
+    environment:
+      COLLECTIONS_UPSTREAM: ws://relay:2470
+      COLLECTIONS_ALLOW_PRIVATE_HOSTS: "true"
+      COLLECTIONS_ADMIN_TOKEN: ${SG_COLLECTIONDIR_ADMIN_TOKEN:?snowglobe up makes it}
+    command:
+      - serve
+      - --pebble
+      - /data/collectiondir/pebble
+      - --dau-directory
+      - /data/collectiondir/dau
+    volumes:
+      - collectiondir-data:/data/collectiondir
+      - /state/snowglobe/ca/ca.crt:/etc/ssl/certs/snowglobe-ca.pem:ro
+    networks:
+      - snowglobe
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - http://127.0.0.1:2510/_health
+      interval: 5s
+      timeout: 3s
+      retries: 10
   relay-init:
     image: alpine:3.20
     depends_on:
@@ -266,6 +302,7 @@ services:
         condition: service_healthy
     environment:
       RELAY_ADMIN_PASSWORD: ${SG_RELAY_ADMIN_PASSWORD:?snowglobe up makes it}
+      COLLECTIONDIR_ADMIN_TOKEN: ${SG_COLLECTIONDIR_ADMIN_TOKEN:?snowglobe up makes it}
       RELAY_HOSTS: alpha.snowglobe.local.snowglobe.at regular.snowglobe.local.snowglobe.at prod.snowglobe.local.snowglobe.at
     entrypoint: /bin/sh
     command:
@@ -279,6 +316,17 @@ services:
             -d "{\"hostname\": \"$$host\"}" http://relay:2470/admin/pds/requestCrawl
           echo
         done
+        if curl -sf -o /dev/null --retry 30 --retry-delay 2 --retry-all-errors http://collectiondir:2510/_health; then
+          for host in $$RELAY_HOSTS; do
+            echo "[relay-init] collectiondir crawl $$host"
+            curl -sf -H "Authorization: Bearer $$COLLECTIONDIR_ADMIN_TOKEN" -H "Content-Type: application/json" \
+              -d "{\"hostname\": \"$$host\"}" http://collectiondir:2510/admin/pds/requestCrawl \
+              || echo "[relay-init] collectiondir crawl of $$host failed"
+            echo
+          done
+        else
+          echo "[relay-init] collectiondir is not answering; its crawl is skipped"
+        fi
     networks:
       - snowglobe
     restart: "no"
@@ -492,6 +540,7 @@ volumes:
   pds-regular-data:
   pds-prod-data:
   relay-data:
+  collectiondir-data:
   jetstream-data:
   slingshot-data:
 networks:

@@ -125,6 +125,58 @@ describe('snowglobe render', () => {
     expect(compose.services.tap.environment.TAP_RELAY_URL).toBe('http://relay:2470');
   });
 
+  it('answers listReposByCollection on the relay\'s name from the collection directory, which crawls every PDS', () => {
+    const { compose, files } = render(FOUR);
+    const dir = compose.services.collectiondir;
+    expect(dir.environment.COLLECTIONS_UPSTREAM).toBe('ws://relay:2470');
+    expect(dir.environment.COLLECTIONS_ALLOW_PRIVATE_HOSTS).toBe('true');
+    expect(dir.image).toBe(compose.services.relay.image.replace('snowglobe-relay:https-', 'snowglobe-collectiondir:'));
+    // The relay's own build argument, so the two are one indigo commit whichever setting picks it.
+    expect(dir.build.args.INDIGO_COMMIT).toBe(compose.services.relay.build.args.INDIGO_COMMIT);
+    // A token of its own: collectiondir logs the token it expects when given a wrong one.
+    expect(dir.environment.COLLECTIONS_ADMIN_TOKEN).toBe('${SG_COLLECTIONDIR_ADMIN_TOKEN:?snowglobe up makes it}');
+    expect(compose.volumes).toHaveProperty('collectiondir-data');
+    const init = compose.services['relay-init'];
+    expect(init.depends_on).not.toHaveProperty('collectiondir');
+    expect(init.command[1]).toContain('http://collectiondir:2510/admin/pds/requestCrawl');
+    expect(files['nginx/globe.conf']).toMatch(
+      /server_name relay\.mine\.test;\s+location \/ \{\s+set \$upstream http:\/\/relay:2470;\s+proxy_pass \$upstream;\s+\}\s+location = \/xrpc\/com\.atproto\.sync\.listReposByCollection \{\s+set \$upstream http:\/\/collectiondir:2510;/,
+    );
+  });
+
+  // relay-init's script, run by sh with a curl that logs each URL and fails the ones the shell
+  // pattern `fail` matches.
+  function runRelayInit(fail: string) {
+    const dir = mkdtempSync(join(tmpdir(), 'relay-init-'));
+    const log = join(dir, 'calls');
+    writeFileSync(join(dir, 'apk'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    writeFileSync(
+      join(dir, 'curl'),
+      `#!/bin/sh\nfor a; do u="$a"; done\necho "$u" >> "${log}"\ncase "$u" in ${fail}) exit 22;; esac\nexit 0\n`,
+      { mode: 0o755 },
+    );
+    const script = render(FOUR).compose.services['relay-init'].command[1].replaceAll('$$', '$');
+    const r = spawnSync('/bin/sh', ['-c', script], {
+      encoding: 'utf8',
+      env: { PATH: `${dir}:${process.env.PATH}`, RELAY_ADMIN_PASSWORD: 'r', COLLECTIONDIR_ADMIN_TOKEN: 'c', RELAY_HOSTS: 'a.test b.test c.test' },
+    });
+    return { status: r.status, calls: existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n') : [] };
+  }
+
+  it('gives every PDS to the relay even when the collection directory refuses its crawls', () => {
+    const { status, calls } = runRelayInit('*collectiondir:2510/admin*');
+    expect(status).toBe(0);
+    expect(calls.filter((u) => u === 'http://relay:2470/admin/pds/requestCrawl')).toHaveLength(3);
+    expect(calls.filter((u) => u === 'http://collectiondir:2510/admin/pds/requestCrawl')).toHaveLength(3);
+  });
+
+  it('skips the collection directory\'s crawl when it does not answer, and still gives every PDS to the relay', () => {
+    const { status, calls } = runRelayInit('*collectiondir:2510*');
+    expect(status).toBe(0);
+    expect(calls.filter((u) => u === 'http://relay:2470/admin/pds/requestCrawl')).toHaveLength(3);
+    expect(calls.filter((u) => u.includes('/admin/pds/requestCrawl') && u.includes('collectiondir'))).toHaveLength(0);
+  });
+
   it('routes each PDS\'s name and handles to its service, and puts both on the leaf', () => {
     const { files } = render(FOUR);
     const conf = files['nginx/globe.conf'];
@@ -190,6 +242,7 @@ describe('snowglobe render', () => {
     });
     expect(compose.services).not.toHaveProperty('relay');
     expect(compose.services).not.toHaveProperty('relay-init');
+    expect(compose.services).not.toHaveProperty('collectiondir');
     expect(compose.services.tap.environment.TAP_RELAY_URL).toBe('http://pds-solo:3000');
     expect(files['nginx/globe.conf']).not.toContain('relay.one.test');
     expect(env.SG_ONESHOTS).toBe('init');

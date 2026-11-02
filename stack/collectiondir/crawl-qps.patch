@@ -1,0 +1,14 @@
+diff --git a/cmd/collectiondir/serve.go b/cmd/collectiondir/serve.go
+index 63e7bbb..efc748a 100644
+--- a/cmd/collectiondir/serve.go
++++ b/cmd/collectiondir/serve.go
+@@ -200,6 +200,9 @@ func (cs *collectionServer) run(ctx context.Context, cmd *cli.Command) error {
+ 	cs.ctx = ctx
+ 	cs.AdminToken = cmd.String("admin-token")
+ 	cs.ExepctedAuthHeader = "Bearer " + cs.AdminToken
++	// --crawl-qps was never read, so a crawl ran at 0 QPS: its rate limiter let the first
++	// listRepos through and then waited forever before the first describeRepo.
++	cs.PerPDSCrawlQPS = cmd.Float64("crawl-qps")
+ 	cs.wg.Add(1)
+ 	go cs.ingestReceiver()
+ 	pebblePath := cmd.String("pebble")

@@ -20,12 +20,25 @@
   fetch the sign-in metadata of your app at `<name>.app.<domain>` or of PDSls.
 - **The relay dials wss**, which is why it is built locally (see [The relay, built
   locally](#the-relay-built-locally)). Its `listHosts` shows a host only once it has sent an event.
+- **`relay.<domain>` also answers `com.atproto.sync.listReposByCollection`**, which an app's bulk
+  backfill asks a relay for (contrail's does) and the relay itself does not answer. As indigo's
+  firehose splitter does in front of a real relay, nginx sends that one path to `collectiondir`,
+  indigo's directory of which accounts hold records in which collection, built from the relay's
+  indigo commit (`stack/collectiondir/Dockerfile`) with two patches: one like the relay's, because
+  its crawl refuses private addresses too, and one so its crawl reads its own rate limit, without
+  which it stalls after the first page. Only that path reaches it; its admin API stays on the
+  compose network. It reads the relay's firehose from its first start, and `relay-init` has it
+  crawl each PDS, so an account that wrote before it started is listed too. `relay-init` gives
+  every PDS to the relay first and never waits on `collectiondir`, so a directory that is down
+  leaves the relay, Jetstream and Tap as they were.
 - **Tap runs in the DNS container's network** (`tap-dns`), whose DNS answers every name under the
   domain with nginx. That is how Tap reaches an app's https name to send it events, and checks a
   handle (`alice.<domain>`) at its own name. Tap's port is published on the snowglobe's address, `SG_BIND`, at `<SG_TAP_PORT>` (2480)
-  from that container. Tap finds an account when it writes in the signal collection; its crawl of
-  that collection's repos is refused by the PDS (HTTP 401), so a repo written before Tap started is
-  found when it next writes, and then its whole repo is fetched. That is how the Tap image this
+  from that container. Tap finds an account when it writes in the signal collection. Its crawl of
+  that collection's repos asks its relay, which inside the network is the relay itself
+  (`http://relay:2470`, HTTP 404) or, with no relay, the PDS (HTTP 401); only `relay.<domain>` sends
+  that request to `collectiondir`. So a repo written before Tap started is found when it next
+  writes, and then its whole repo is fetched. That is how the Tap image this
   snowglobe pins behaves (indigo revision `4f47add4`).
 - **Jetstream** is at `ws://<SG_BIND>:<SG_JETSTREAM_PORT>` (the snowglobe's own address) and at `wss://jetstream.<domain>`, reading the relay over the Docker network, so the relay
   runs even with one PDS: at start Jetstream asks the relay for the network's hosts, which a PDS refuses. It is
@@ -70,4 +83,4 @@ adds one opt-in setting, `RELAY_ALLOW_PRIVATE_HOSTS`, and copies the binary into
 image. The setting covers both places the relay refuses those addresses: the host check, and the
 firehose dialer for `wss://` hosts, which [a snowglobe](snowglobe.md) needs because its
 PDS names resolve to nginx's private address. Pick another commit with `SG_RELAY_INDIGO_COMMIT`; it needs a published `relay-<commit>`
-image, and the patch has to apply.
+image, and the patch has to apply. The same setting picks the commit `collectiondir` is built from.
