@@ -2,6 +2,15 @@
 
 Changes to the default stack that existing setups will notice:
 
+## Unreleased
+
+- **`services.cdn: true` runs an image service at `cdn.<domain>`**, in the shape of Bluesky's image
+  CDN (`/img/<preset>/plain/<did>/<cid>@<format>`). An app that shows account images, such as an
+  avatar or an event's picture, through that CDN shows nothing on a snowglobe, because the CDN cannot
+  reach its PDSes; pointed at `${services.cdn.url}`, it shows them. Off by default. It is the image
+  service a hosted snowglobe already runs, now in `stack/cdn/`. `cdn` is now a reserved name, so a
+  PDS or group host can no longer be called `cdn`.
+
 ## v0.5.0 (2026-10-31)
 
 - **Breaking: each local snowglobe has a domain of its own, `<globe>.local.snowglobe.at`.** A file

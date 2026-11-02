@@ -137,6 +137,15 @@ describe('snowglobe render', () => {
     expect(conf).toMatch(/server_name relay\.mine\.test;\s+location \/ \{\s+set \$upstream http:\/\/relay:2470;/);
   });
 
+  it('gives every service the page lists a health route, so none shows as down for want of one', () => {
+    const { files } = render({ ...THREE, services: { relay: true, tap: true, pdsls: true, cdn: true } });
+    const routes = readFileSync(join(ROOT, 'stack/page/snowglobe.conf'), 'utf8') + files['nginx/page.inc'];
+    const have = new Set([...routes.matchAll(/location = \/health\/([a-z0-9-]+) /g)].map((m) => m[1]));
+    const listed: string[][] = JSON.parse(files['page.json']).services;
+    expect(listed.map((s) => s[0])).toContain('Image CDN');
+    for (const [label, , key] of listed) expect(have.has(key), `${label}: /health/${key}`).toBe(true);
+  });
+
   it('gives the page health and accounts for every PDS, and the seed PDS at /health/pds', () => {
     const { files } = render({ ...FOUR, pds: [PDS('regular'), PDS('alpha', { bare_handles: true }), PDS('beta')] });
     const inc = files['nginx/page.inc'];
@@ -196,6 +205,31 @@ describe('snowglobe render', () => {
       expect(files['nginx/globe.conf']).not.toContain(n);
       expect(files['leaf-names'].split('\n')).not.toContain(n);
     }
+  });
+
+  it('runs no image service unless the file turns it on', () => {
+    const { compose, files, env } = render(THREE);
+    expect(compose.services).not.toHaveProperty('cdn');
+    expect(env.SG_SERVICES.split(' ')).not.toContain('cdn');
+    expect(files['nginx/globe.conf']).not.toContain('cdn.mine.test');
+    expect(files['leaf-names'].split('\n')).not.toContain('cdn.mine.test');
+  });
+
+  it("serves account images at cdn.<domain> in Bluesky's CDN shape when the file turns it on", () => {
+    const { compose, files, env } = render({ ...THREE, services: { cdn: true } });
+    const cdn = compose.services.cdn;
+    // It finds an account's PDS on the globe's directory and fetches the blob over TLS at the PDS's
+    // own name, connecting to nginx for every name under the domain, so it trusts the globe's CA.
+    expect(cdn.environment).toMatchObject({ CDN_PLC_URL: 'http://plc:2582', CDN_DOMAIN: 'mine.test', CDN_UPSTREAM: 'nginx:443', NODE_EXTRA_CA_CERTS: '/https/ca.crt' });
+    expect(cdn.volumes).toContain(`${dirname(STATE)}/ca/ca.crt:/https/ca.crt:ro`);
+    expect(cdn.networks).toEqual(['snowglobe']);
+    expect(Object.keys(cdn.depends_on).sort()).toEqual(['nginx', 'plc']);
+    expect(cdn.healthcheck.test.join(' ')).toContain('http://127.0.0.1:8080/_health');
+    expect(env.SG_SERVICES.split(' ')).toContain('cdn');
+    expect(files['nginx/globe.conf']).toMatch(/server_name cdn\.mine\.test;[\s\S]*?set \$upstream http:\/\/cdn:8080;/);
+    expect(files['leaf-names'].split('\n')).toContain('cdn.mine.test');
+    const page = JSON.parse(files['page.json']);
+    expect(page.services.map((s: string[]) => s[0])).toContain('Image CDN');
   });
 
   it("names on the page only what the globe runs, and gives it no feed without Jetstream", () => {
@@ -375,8 +409,8 @@ describe('stack/https/app-names.cjs', () => {
 
 describe('snowglobe images built from this repo', () => {
   it('tags each by a hash of its build folder, so a changed folder is rebuilt', () => {
-    const { compose } = render(THREE);
-    for (const [svc, name] of [['slingshot-dns', 'dns'], ['proxy', 'proxy'], ['pdsls', 'pdsls']])
+    const { compose } = render({ ...THREE, services: { cdn: true } });
+    for (const [svc, name] of [['slingshot-dns', 'dns'], ['proxy', 'proxy'], ['pdsls', 'pdsls'], ['cdn', 'cdn']])
       expect(compose.services[svc].image, svc).toMatch(new RegExp(`^snowglobe-${name}:[0-9a-f]{12}$`));
   });
 

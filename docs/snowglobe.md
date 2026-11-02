@@ -22,6 +22,7 @@ its domain, `snowglobe.local.snowglobe.at`:
 | `slingshot.<domain>` | `slingshot`, which answers a handle's DID and PDS ([Slingshot](how-it-works.md#slingshot-handles-and-dids-inside-the-network)) |
 | `plc.<domain>`, `relay.<domain>`, `jetstream.<domain>` | the PLC, the relay and Jetstream, as a snowglobe names them, so an app reaches them over https too |
 | `pdsls.<domain>` | `pdsls`, the record browser ([PDSls](https://pds.ls)) for this network (below) |
+| `cdn.<domain>` | `cdn`, with `services.cdn: true`: account images in the shape of Bluesky's image CDN (below) |
 | `<domain>` | nginx itself: the network's page, the one a snowglobe serves at its bare name (below) |
 | `<name>.app.<domain>` | an app on this machine, at the port `snowglobe app` recorded for `<name>` |
 | `*.<ending>.<domain>` | the app that claimed `<ending>` with `snowglobe app`, for the handles it hands out |
@@ -88,6 +89,19 @@ Some lexicons fail that parser, as they would on pds.ls. Examples are the openso
 lexicons (a `space` definition, a `space-ref` format) and atmo's permission set. The record view
 still works for them.
 
+## Images: an image CDN for this network
+
+Apps show account images (avatars, banners, an event's picture) through Bluesky's image CDN,
+`https://cdn.bsky.app/img/<preset>/plain/<did>/<cid>@<format>`. That CDN cannot reach a snowglobe's
+PDSes, so on a snowglobe those images are broken. With `services.cdn: true`, `https://cdn.<domain>`
+answers the same paths: it finds the account's PDS on the network's PLC directory and serves the blob
+from there, as stored (the preset and format are accepted and ignored). An app that takes its image
+CDN as a setting points it at `${services.cdn.url}` and keeps its image template. It serves images
+only, as Bluesky's does, up to 10 MiB. It refuses a `did:web` or a PDS outside the domain and follows
+no redirect, so it never fetches from outside the network, and keeps nothing but each account's PDS,
+for ten minutes. `stack/cdn/` builds it,
+with no dependencies but Node.
+
 ## The name router
 
 One name router serves every snowglobe on the machine: a stock nginx (the image each snowglobe's nginx
@@ -139,6 +153,7 @@ services:                        # each true or false; these are the defaults
                                  # the app reads Tap at ${services.tap.url}
   slingshot: true                # needs jetstream
   pdsls: true
+  cdn: false                     # true: account images at cdn.<domain>, in Bluesky's CDN shape
 
 lexicons:
   authority: alpha               # the PDS lex-authority is made on (the bare-handle PDS by default)
@@ -156,9 +171,9 @@ apps:
 
 `snowglobe check` says what is wrong with a file, one line per problem, and touches
 nothing. A name used twice, a PDS named like a service, an app's handle ending that is a PDS's
-name, a handle longer than DNS allows: each fails here, before anything starts. `hosted`, an
-app's `hosted` and `services.cdn` (an image service) are read and checked for a snowglobe hosted on a
-server; a local snowglobe does not use them. A hosted snowglobe, such as lighthouse, also runs one PDS and
+name, a handle longer than DNS allows: each fails here, before anything starts. `hosted` and
+an app's `hosted` are read and checked for a snowglobe hosted on a server; a local snowglobe does
+not use them. A hosted snowglobe, such as lighthouse, also runs one PDS and
 one group host today, whatever its file lists.
 
 **Group hosts** are optional. Each one runs beside the PDSes as a service of its own at

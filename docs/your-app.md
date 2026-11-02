@@ -169,6 +169,7 @@ The names follow the file: the section, the name you gave it, then the field. Ev
 | `services.plc.url` | `https://plc.<domain>` |
 | `services.relay` `.jetstream` `.url` `.ws` | `https://relay.<domain>`, `wss://relay.<domain>`; Jetstream's `.ws` ends in `/subscribe`, the older protocol, and a Jetstream v2 client such as contrail takes `.url` |
 | `services.slingshot.url`, `services.pdsls.url` | `https://slingshot.<domain>`, `https://pdsls.<domain>` |
+| `services.cdn.url` | `https://cdn.<domain>`, the image service, when `services.cdn` is on |
 | `accounts.<name>.handle` `.pds` | the handle, and its PDS's url |
 | `lexicons.authority.handle` | the authority account's handle |
 | `services.mail.url`, `accounts.<name>.did` `.password`, `accounts.file`, `lexicons.authority.did`, `ca.file` | known after `snowglobe up`, read from its state |
