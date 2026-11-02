@@ -6,7 +6,7 @@ pds:
   - { name: regular, image: ghcr.io/bluesky-social/pds:0.4.5037 }
 grouphosts:
   - { name: gh, kind: opensocial, image: ghcr.io/example/grouphost:1 }
-services: { relay: auto, jetstream: true, tap: true, slingshot: true, pdsls: true }
+services: { relay: auto, jetstream: true, tap: true, slingshot: true, pdsls: true, cdn: true }
 lexicons: { authority: alpha }
 accounts: [alice@alpha, bob@regular]
 apps:
@@ -31,6 +31,7 @@ apps:
       JET_WS: ${services.jetstream.ws}
       SLING: ${services.slingshot.url}
       PDSLS: ${services.pdsls.url}
+      CDN: ${services.cdn.url}
       MAIL: ${services.mail.url}
       ALICE_HANDLE: ${accounts.alice.handle}
       ALICE_PDS: ${accounts.alice.pds}

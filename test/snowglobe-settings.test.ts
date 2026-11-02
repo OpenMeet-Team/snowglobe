@@ -53,6 +53,7 @@ describe('the value names', () => {
       JET_WS: 'wss://jetstream.sg.test/subscribe',
       SLING: 'https://slingshot.sg.test',
       PDSLS: 'https://pdsls.sg.test',
+      CDN: 'https://cdn.sg.test',
       MAIL: '<services.mail.url>',
       ALICE_HANDLE: 'alice.sg.test',
       ALICE_PDS: 'https://alpha.sg.test',
@@ -101,6 +102,8 @@ describe('the names are checked with the file', () => {
     expect(errorsOf({ R: '${services.jetstream.ws}' }, { services: { jetstream: false, slingshot: false } })[0]).toContain('services.jetstream is off');
     expect(errorsOf({ R: '${services.tap.url}' })[0]).toContain('services.tap is off');
     expect(errorsOf({ R: '${services.tap.url}' }, { services: { tap: true } })).toEqual([]);
+    expect(errorsOf({ R: '${services.cdn.url}' })[0]).toContain('services.cdn is off');
+    expect(errorsOf({ R: '${services.cdn.url}' }, { services: { cdn: true } })).toEqual([]);
   });
 
   it('teaches the pattern on a wrong field or section', () => {

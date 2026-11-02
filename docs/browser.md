@@ -112,7 +112,7 @@ leaf only when it lacks a name, so a browser or OS that trusts `ca.crt` keeps tr
 only says whether the leaf lacks a name (exit 1) or not (exit 0). The leaf names what the render lists in
 `<state>/globe/leaf-names`: the domain itself, each PDS and its handles (`*.<domain>` for the one
 with bare handles, `*.<name>.<domain>` for each other), each group host and its groups' handles,
-`plc.`, `relay.`, `jetstream.`, `slingshot.` and `pdsls.<domain>`, `plc.directory` and `*.app.<domain>`
+`plc.`, `relay.`, `jetstream.`, `slingshot.`, `pdsls.` and `cdn.<domain>` (each one the file runs), `plc.directory` and `*.app.<domain>`
 (the apps); and `*.<ending>.<domain>` for each handle ending an app claimed. A TLS wildcard covers one
 label, so each handle domain needs its own. `snowglobe app` reissues the leaf
 when it claims an ending, and `snowglobe up` when the leaf lacks any of these names. Add deeper names
