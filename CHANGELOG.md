@@ -10,6 +10,15 @@ Changes to the default stack that existing setups will notice:
   reach its PDSes; pointed at `${services.cdn.url}`, it shows them. Off by default. It is the image
   service a hosted snowglobe already runs, now in `stack/cdn/`. `cdn` is now a reserved name, so a
   PDS or group host can no longer be called `cdn`.
+- **The relay's name answers `com.atproto.sync.listReposByCollection`.** It was a 404, so an app's
+  bulk backfill (contrail's, for one) found no accounts on a snowglobe. When the relay runs, a
+  snowglobe now also runs `collectiondir`, indigo's directory of which accounts hold records in
+  which collection, and nginx sends that one path on `relay.<domain>` to it. It is built from the
+  relay's indigo commit with two small patches to its crawl (private addresses, and a rate limit it
+  never read). It follows the relay's firehose, and `relay-init` has it crawl each PDS, so accounts
+  that wrote before it started are listed too. The first `up` after upgrading builds its image,
+  unless one is published for the release. `collectiondir` is now a reserved name, so a PDS or group
+  host can no longer be called `collectiondir`.
 
 ## v0.5.0 (2026-10-31)
 

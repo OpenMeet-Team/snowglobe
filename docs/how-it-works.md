@@ -20,6 +20,14 @@
   fetch the sign-in metadata of your app at `<name>.app.<domain>` or of PDSls.
 - **The relay dials wss**, which is why it is built locally (see [The relay, built
   locally](#the-relay-built-locally)). Its `listHosts` shows a host only once it has sent an event.
+- **`relay.<domain>` also answers `com.atproto.sync.listReposByCollection`**, which an app's bulk
+  backfill asks a relay for (contrail's does) and the relay itself does not answer. As indigo's
+  firehose splitter does in front of a real relay, nginx sends that one path to `collectiondir`,
+  indigo's directory of which accounts hold records in which collection, built from the relay's
+  indigo commit (`stack/collectiondir/Dockerfile`) with two patches: one like the relay's, because
+  its crawl refuses private addresses too, and one so its crawl reads its own rate limit, without
+  which it stalls after the first page. It reads the relay's firehose from its first start, and
+  `relay-init` has it crawl each PDS, so an account that wrote before it started is listed too.
 - **Tap runs in the DNS container's network** (`tap-dns`), whose DNS answers every name under the
   domain with nginx. That is how Tap reaches an app's https name to send it events, and checks a
   handle (`alice.<domain>`) at its own name. Tap's port is published on the snowglobe's address, `SG_BIND`, at `<SG_TAP_PORT>` (2480)
@@ -70,4 +78,4 @@ adds one opt-in setting, `RELAY_ALLOW_PRIVATE_HOSTS`, and copies the binary into
 image. The setting covers both places the relay refuses those addresses: the host check, and the
 firehose dialer for `wss://` hosts, which [a snowglobe](snowglobe.md) needs because its
 PDS names resolve to nginx's private address. Pick another commit with `SG_RELAY_INDIGO_COMMIT`; it needs a published `relay-<commit>`
-image, and the patch has to apply.
+image, and the patch has to apply. The same setting picks the commit `collectiondir` is built from.

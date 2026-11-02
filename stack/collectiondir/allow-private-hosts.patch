@@ -1,0 +1,20 @@
+diff --git a/cmd/collectiondir/serve.go b/cmd/collectiondir/serve.go
+index 63e7bbb..67405aa 100644
+--- a/cmd/collectiondir/serve.go
++++ b/cmd/collectiondir/serve.go
+@@ -900,8 +900,14 @@ func (cs *collectionServer) crawlThread(hostIn string) {
+ 	if host != hostIn {
+ 		cs.log.Info("going to crawl", "in", hostIn, "as", host)
+ 	}
++	// COLLECTIONS_ALLOW_PRIVATE_HOSTS=true lets a local network's directory crawl PDSes on
++	// localhost and private addresses (a snowglobe's PDSes, whose names resolve to its TLS proxy).
++	transport := ssrf.PublicOnlyTransport()
++	if os.Getenv("COLLECTIONS_ALLOW_PRIVATE_HOSTS") == "true" {
++		transport = http.DefaultTransport.(*http.Transport).Clone()
++	}
+ 	httpClient := http.Client{
+-		Transport: ssrf.PublicOnlyTransport(),
++		Transport: transport,
+ 	}
+ 	rpcClient := xrpc.Client{
+ 		Host:   host,

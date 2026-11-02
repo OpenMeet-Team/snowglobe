@@ -125,6 +125,22 @@ describe('snowglobe render', () => {
     expect(compose.services.tap.environment.TAP_RELAY_URL).toBe('http://relay:2470');
   });
 
+  it('answers listReposByCollection on the relay\'s name from the collection directory, which crawls every PDS', () => {
+    const { compose, files } = render(FOUR);
+    const dir = compose.services.collectiondir;
+    expect(dir.environment.COLLECTIONS_UPSTREAM).toBe('ws://relay:2470');
+    expect(dir.environment.COLLECTIONS_ALLOW_PRIVATE_HOSTS).toBe('true');
+    expect(dir.image).toBe(compose.services.relay.image.replace('snowglobe-relay:https-', 'snowglobe-collectiondir:'));
+    expect(dir.build.args.INDIGO_COMMIT).toBe(dir.image.split(':').slice(1).join(':'));
+    expect(compose.volumes).toHaveProperty('collectiondir-data');
+    const init = compose.services['relay-init'];
+    expect(init.depends_on).toHaveProperty('collectiondir');
+    expect(init.command[1]).toContain('http://collectiondir:2510/admin/pds/requestCrawl');
+    expect(files['nginx/globe.conf']).toMatch(
+      /server_name relay\.mine\.test;\s+location \/ \{\s+set \$upstream http:\/\/relay:2470;\s+proxy_pass \$upstream;\s+\}\s+location = \/xrpc\/com\.atproto\.sync\.listReposByCollection \{\s+set \$upstream http:\/\/collectiondir:2510;/,
+    );
+  });
+
   it('routes each PDS\'s name and handles to its service, and puts both on the leaf', () => {
     const { files } = render(FOUR);
     const conf = files['nginx/globe.conf'];
@@ -190,6 +206,7 @@ describe('snowglobe render', () => {
     });
     expect(compose.services).not.toHaveProperty('relay');
     expect(compose.services).not.toHaveProperty('relay-init');
+    expect(compose.services).not.toHaveProperty('collectiondir');
     expect(compose.services.tap.environment.TAP_RELAY_URL).toBe('http://pds-solo:3000');
     expect(files['nginx/globe.conf']).not.toContain('relay.one.test');
     expect(env.SG_ONESHOTS).toBe('init');
