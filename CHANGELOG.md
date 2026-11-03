@@ -2,7 +2,7 @@
 
 Changes to the default stack that existing setups will notice:
 
-## Unreleased
+## v0.6.0 (2026-11-02)
 
 - **`services.cdn: true` runs an image service at `cdn.<domain>`**, in the shape of Bluesky's image
   CDN (`/img/<preset>/plain/<did>/<cid>@<format>`). An app that shows account images, such as an
