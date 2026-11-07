@@ -9,7 +9,7 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync,
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 // @ts-expect-error: a plain .mjs module, without types
-import { accountPrefixes, bindFilesToRemove, endingClash, mergeRoutes, nameFinding, startedAfterRelay, tryName } from '../lib/up.mjs';
+import { accountPrefixes, bindFilesToRemove, endingClash, mergeRoutes, nameFails, nameFinding, startedAfterRelay, tryName } from '../lib/up.mjs';
 
 const ROOT = join(__dirname, '..');
 const FOUR = join(ROOT, 'test/snowglobe/four.yml');
@@ -62,7 +62,9 @@ describe("what up does with the globe's own name", () => {
     for (const routed of [true, false]) expect(f(routed, no('unresolved'))).toBe('unresolved');
     expect(f(true, no('unanswered', '127.0.0.1'))).toBe('router-unanswered');
     expect(f(true, no('another', '127.0.0.1'))).toBe('router-another');
+    expect(f(true, { ...no('another', '127.0.0.1'), snowglobe: true })).toBe('router-another');
     expect(f(false, no('another', '127.0.0.1'))).toBe('another');
+    expect(f(false, { ...no('another', '127.0.0.1'), snowglobe: true })).toBe('another-snowglobe');
     // The bug: up put the globe on 127.0.0.3 and nothing is on 127.0.0.1, where its name resolves.
     expect(f(false, no('unanswered', '127.0.0.1'))).toBe('elsewhere');
     expect(f(false, no('unanswered', '127.0.0.1'), '127.0.0.1')).toBe('unanswered');
@@ -71,9 +73,15 @@ describe("what up does with the globe's own name", () => {
   it('removes bind files only where that puts the globe where its name reaches', () => {
     const own = '/s/mine/bind';
     const kept = ['/s/dead/bind'];
-    expect(bindFilesToRemove('elsewhere', { own, kept })).toEqual([own, ...kept]);
+    for (const finding of ['elsewhere', 'another', 'another-snowglobe']) expect(bindFilesToRemove(finding, { own, kept })).toEqual([own, ...kept]);
     expect(bindFilesToRemove('router-unanswered', { own, kept })).toEqual([own]);
-    for (const finding of ['unresolved', 'router-another', 'another', 'unanswered']) expect(bindFilesToRemove(finding, { own, kept })).toEqual([]);
+    for (const finding of ['unresolved', 'router-another', 'unanswered']) expect(bindFilesToRemove(finding, { own, kept })).toEqual([]);
+  });
+
+  it('fails on every finding but one: another snowglobe on the address, with no router, only warns', () => {
+    expect(nameFails('reached')).toBe(false);
+    expect(nameFails('another-snowglobe')).toBe(false);
+    for (const finding of ['unresolved', 'router-unanswered', 'router-another', 'another', 'elsewhere', 'unanswered']) expect(nameFails(finding)).toBe(true);
   });
 });
 

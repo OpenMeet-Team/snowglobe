@@ -266,6 +266,25 @@ describe('nameReaches', () => {
     }
   });
 
+  it("says when what answers is another of the user's snowglobes: a leaf the user's CA signed", async () => {
+    const { mine, other, leaf } = await two();
+    // A third leaf from a CA of its own, as anything else on 443 would have.
+    const stranger = globeRoot();
+    await ensureCerts({ dir: https(stranger), caDir: caDir(stranger), domain: D, names: NAMES });
+    const ca = readFileSync(join(caDir(mine), 'ca.crt'), 'utf8');
+    const b = await serve(other);
+    const c = await serve(stranger);
+    try {
+      expect(await nameReaches(D, { leaf, ca, lookup: at('127.0.0.1'), port: b.port })).toEqual({ reached: false, why: 'another', address: '127.0.0.1', snowglobe: true });
+      expect(await nameReaches(D, { leaf, ca, lookup: at('127.0.0.1'), port: c.port })).toEqual({ reached: false, why: 'another', address: '127.0.0.1' });
+      // Without the CA, nothing is said either way.
+      expect(await nameReaches(D, { leaf, lookup: at('127.0.0.1'), port: b.port })).toEqual({ reached: false, why: 'another', address: '127.0.0.1' });
+    } finally {
+      b.server.close();
+      c.server.close();
+    }
+  });
+
   it('says when nothing answers at the address, or the name has none', async () => {
     const { mine, leaf } = await two();
     // A port that was just closed: nothing listens there.

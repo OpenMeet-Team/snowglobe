@@ -303,7 +303,9 @@ on `127.0.0.1`. The message says what it found (a name that does not resolve, no
 something else answering) and what to do. For a snowglobe that landed on another address it names the `bind`
 files to remove before the next `up`: its own, since a rerun keeps the address, and those of the snowglobes that
 keep `127.0.0.1`, running or not, since `up` passes over an address one of them keeps. `SG_BIND` overrides
-both, and the message says so when it is set. The snowglobe is left running.
+both, and the message says so when it is set. The snowglobe is left running. One case only warns: with no
+router, another of your snowglobes on `127.0.0.1` (its certificate is from your CA), since then only one is
+reached by name, as two side by side are meant to run.
 
 Published ports, all on the snowglobe's own loopback address: 443 (nginx), the proxy (`SG_PROXY_PORT`, 1080), the PLC (`SG_PLC_PORT`), Jetstream
 (`SG_JETSTREAM_PORT`, `SG_JETSTREAM_METRICS_PORT`) and maildev (`SG_MAILDEV_WEB_PORT`,

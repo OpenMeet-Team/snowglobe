@@ -27,7 +27,7 @@ the snowglobe checkout. Every setting has a default.
 To run a second snowglobe beside another, give it a file with its own `globe:` name and run `snowglobe up`. It takes its own
 address and its own domain, so the ports above do not clash, nothing needs setting, and the name router reaches both by
 name. (On macOS only `127.0.0.1` exists until you add more, for example `sudo ifconfig lo0 alias 127.0.0.2`, and with no
-router there only the snowglobe on `127.0.0.1` is reached by name.)
+router there only the snowglobe on `127.0.0.1` is reached by name; `up` of the other says so.)
 
 ## Variables the tools read
 
