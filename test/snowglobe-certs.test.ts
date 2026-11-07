@@ -14,7 +14,7 @@ import { Certificate } from '@peculiar/asn1-x509';
 // @ts-expect-error: a plain .mjs module, without types
 import { ensureCerts, leafLacks, leafNames } from '../lib/certs.mjs';
 // @ts-expect-error: a plain .mjs module, without types
-import { snowglobeRequest, paths } from '../lib/env.mjs';
+import { nameReaches, snowglobeRequest, paths } from '../lib/env.mjs';
 
 const ROOT = join(__dirname, '..');
 const D = 'certs.test';
@@ -221,6 +221,59 @@ describe('snowglobeRequest', () => {
       await expect(snowglobeRequest(`https://other.example:${port}/`, { root: r, state: stateDir(r), env: {} })).rejects.toThrow();
     } finally {
       server.close();
+    }
+  });
+});
+
+describe('nameReaches', () => {
+  // Two snowglobes' leaves from one CA, as on a machine running two: each carries the same names,
+  // so only the leaf itself tells them apart.
+  async function two() {
+    const mine = globeRoot();
+    const other = globeRoot();
+    await ensureCerts({ dir: https(mine), caDir: caDir(mine), domain: D, names: NAMES });
+    await ensureCerts({ dir: https(other), caDir: caDir(mine), domain: D, names: NAMES });
+    return { mine, other, leaf: readFileSync(join(https(mine), 'leaf.crt'), 'utf8') };
+  }
+  async function serve(r: string, host = '127.0.0.1') {
+    const server = createServer({ key: readFileSync(join(https(r), 'leaf.key')), cert: readFileSync(join(https(r), 'leaf.crt')) }, (_req, res) => res.end());
+    await new Promise<void>((done) => server.listen(0, host, done));
+    return { server, port: (server.address() as { port: number }).port };
+  }
+  // A resolver that answers every name with one address.
+  const at = (address: string) => (_name: string, cb: (e: Error | null, a?: string, f?: number) => void) => cb(null, address, 4);
+
+  it("reaches the globe where its own leaf answers, and tells another snowglobe's apart", async () => {
+    const { mine, other, leaf } = await two();
+    const a = await serve(mine);
+    const b = await serve(other);
+    try {
+      expect(await nameReaches(D, { leaf, lookup: at('127.0.0.1'), port: a.port })).toEqual({ reached: true, address: '127.0.0.1' });
+      expect(await nameReaches(D, { leaf, lookup: at('127.0.0.1'), port: b.port })).toEqual({ reached: false, why: 'another', address: '127.0.0.1' });
+    } finally {
+      a.server.close();
+      b.server.close();
+    }
+  });
+
+  it('says when nothing answers at the address, or the name has none', async () => {
+    const { mine, leaf } = await two();
+    // A port that was just closed: nothing listens there.
+    const a = await serve(mine);
+    await new Promise((done) => a.server.close(done));
+    expect(await nameReaches(D, { leaf, lookup: at('127.0.0.1'), port: a.port })).toEqual({ reached: false, why: 'unanswered', address: '127.0.0.1', code: 'ECONNREFUSED' });
+    const none = (_name: string, cb: (e: Error) => void) => cb(Object.assign(new Error('no address'), { code: 'ENOTFOUND' }));
+    expect(await nameReaches(D, { leaf, lookup: none })).toEqual({ reached: false, why: 'unresolved', code: 'ENOTFOUND' });
+  });
+
+  it("looks the name up through the machine's own resolver by default, hosts file included", async () => {
+    const { mine, leaf } = await two();
+    // localhost comes from the hosts file, and the server takes whichever address it resolves to first.
+    const a = await serve(mine, 'localhost');
+    try {
+      expect(await nameReaches('localhost', { leaf, port: a.port })).toMatchObject({ reached: true });
+    } finally {
+      a.server.close();
     }
   });
 });
