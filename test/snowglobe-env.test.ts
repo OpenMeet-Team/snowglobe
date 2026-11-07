@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, utimesSync,
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 // @ts-expect-error: a plain .mjs module, without types
-import { adoptOldNames, chooseBind, envCompose, envGet, envPut, makePrivate, resolveBind, resolveDomain } from '../lib/env.mjs';
+import { adoptOldNames, chooseBind, envCompose, envGet, envPut, keptBy, makePrivate, resolveBind, resolveDomain } from '../lib/env.mjs';
 
 // A snowglobe's state folder is not in the checkout.
 const state = (r: string) => join(r, 'state', 'g');
@@ -254,5 +254,18 @@ describe('chooseBind', () => {
 
   it('says so when no address up to 127.0.0.50 is free', async () => {
     await expect(chooseBind(mine(top(), 'x', { listening: async () => true }))).rejects.toThrow(/SG_BIND/);
+  });
+});
+
+describe('keptBy', () => {
+  it('names the other snowglobes whose bind file keeps an address, running or not', () => {
+    const top = join(mkdtempSync(join(tmpdir(), 'snowglobe-env-')), 'snowglobe');
+    for (const [d, bind] of [['dead', '127.0.0.1'], ['two', '127.0.0.2'], ['me', '127.0.0.1'], ['also', '127.0.0.1\n']]) {
+      mkdirSync(join(top, d), { recursive: true });
+      writeFileSync(join(top, d, 'bind'), `${bind}\n`);
+    }
+    mkdirSync(join(top, 'ca'));
+    expect(keptBy(join(top, 'me'), '127.0.0.1').sort()).toEqual(['also', 'dead']);
+    expect(keptBy(join(top, 'me'), '127.0.0.3')).toEqual([]);
   });
 });

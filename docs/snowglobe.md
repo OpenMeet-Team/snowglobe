@@ -117,7 +117,7 @@ takes the route away, and the router with the last one. `snowglobe ls` ends with
 it runs and what it routes. It runs on Linux with Docker Engine, WSL 2 included; Docker Desktop is not
 tested. On other systems, or with `SG_ROUTER=off`, there is no router: a new snowglobe takes the first
 free address from `127.0.0.1` as before 0.5.0, and only the one on `127.0.0.1` is reached by name
-(`SG_BIND=127.0.0.1` puts one there). A snowglobe
+(`SG_BIND=127.0.0.1` puts one there; `up` fails, saying so, when its snowglobe is elsewhere). A snowglobe
 on `127.0.0.1` (set with `SG_BIND`, or made before 0.5.0 and still running) holds the router's address,
 so the router does not start while it runs, and `up` says how to move it.
 
@@ -294,6 +294,18 @@ brings the stack up again with `SG_LEXICON_AUTHORITY_DID` so every PDS starts wi
 settings file for an app: `snowglobe env` prints them ([An app's settings](your-app.md#snowglobe-env-know-where-things-are)).
 The base init seeds `alice` and `bob` and a 100-use `SG_INVITE_CODE`
 into `<state>/accounts.env`, on the PDS with bare handles (else the first). Nothing else is seeded.
+
+Last, `up` looks the snowglobe's domain up the way an app on this machine does (the hosts file and DNS),
+connects to port 443 there, and fails unless what answers is the snowglobe itself, with its own certificate.
+Every other request `up` makes goes to the snowglobe's address directly, so before this a snowglobe no app
+could reach by name came up with exit 0. Where the name router does not run, that is a snowglobe that is not
+on `127.0.0.1`. The message says what it found (a name that does not resolve, nothing taking the connection, or
+something else answering) and what to do. For a snowglobe that landed on another address it names the `bind`
+files to remove before the next `up`: its own, since a rerun keeps the address, and those of the snowglobes that
+keep `127.0.0.1`, running or not, since `up` passes over an address one of them keeps. `SG_BIND` overrides
+both, and the message says so when it is set. The snowglobe is left running. One case only warns: with no
+router, another of your snowglobes on `127.0.0.1` (its certificate is from your CA), since then only one is
+reached by name, as two side by side are meant to run.
 
 Published ports, all on the snowglobe's own loopback address: 443 (nginx), the proxy (`SG_PROXY_PORT`, 1080), the PLC (`SG_PLC_PORT`), Jetstream
 (`SG_JETSTREAM_PORT`, `SG_JETSTREAM_METRICS_PORT`) and maildev (`SG_MAILDEV_WEB_PORT`,

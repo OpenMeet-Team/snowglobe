@@ -2,6 +2,20 @@
 
 Changes to the default stack that existing setups will notice:
 
+## Unreleased
+
+- **`up` fails when the snowglobe's own name does not reach it.** Last, it looks the domain up the way
+  an app on the machine does and connects there, and exits 1 unless the snowglobe itself answers,
+  with its own certificate. The snowglobe is left running. Before, `up` reached every service at the
+  snowglobe's address directly and exited 0 on a snowglobe no app could reach by name: with the name
+  router off, an address kept in the `bind` file of a snowglobe long gone put a new one on
+  `127.0.0.3`, and an app's first request was refused at `127.0.0.1`. The message says what it found
+  and what to do; for a snowglobe put on another address, which `bind` files to remove before the
+  next `up`. With no router, another of your snowglobes on `127.0.0.1` only gets a warning, since two
+  side by side are meant to run that way. A machine whose
+  resolver drops answers that point at `127.0.0.1` (DNS rebinding protection) now fails here, where
+  before the app failed later.
+
 ## v0.6.0 (2026-11-02)
 
 - **`services.cdn: true` runs an image service at `cdn.<domain>`**, in the shape of Bluesky's image
