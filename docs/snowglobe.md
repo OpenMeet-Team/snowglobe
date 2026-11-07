@@ -299,9 +299,11 @@ Last, `up` looks the snowglobe's domain up the way an app on this machine does (
 connects to port 443 there, and fails unless what answers is the snowglobe itself, with its own certificate.
 Every other request `up` makes goes to the snowglobe's address directly, so before this a snowglobe no app
 could reach by name came up with exit 0. Where the name router does not run, that is a snowglobe that is not
-on `127.0.0.1`. The message says what it found (a name that does not resolve, nothing answering, or another
-certificate) and what to do, and names the snowglobes whose `bind` files keep `127.0.0.1`. The snowglobe is
-left running.
+on `127.0.0.1`. The message says what it found (a name that does not resolve, nothing taking the connection, or
+something else answering) and what to do. For a snowglobe that landed on another address it names the `bind`
+files to remove before the next `up`: its own, since a rerun keeps the address, and those of the snowglobes that
+keep `127.0.0.1`, running or not, since `up` passes over an address one of them keeps. `SG_BIND` overrides
+both, and the message says so when it is set. The snowglobe is left running.
 
 Published ports, all on the snowglobe's own loopback address: 443 (nginx), the proxy (`SG_PROXY_PORT`, 1080), the PLC (`SG_PLC_PORT`), Jetstream
 (`SG_JETSTREAM_PORT`, `SG_JETSTREAM_METRICS_PORT`) and maildev (`SG_MAILDEV_WEB_PORT`,

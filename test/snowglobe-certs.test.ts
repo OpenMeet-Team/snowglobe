@@ -240,8 +240,18 @@ describe('nameReaches', () => {
     await new Promise<void>((done) => server.listen(0, host, done));
     return { server, port: (server.address() as { port: number }).port };
   }
-  // A resolver that answers every name with one address.
-  const at = (address: string) => (_name: string, cb: (e: Error | null, a?: string, f?: number) => void) => cb(null, address, 4);
+  // A resolver that answers every name with these addresses, in order, as dns.lookup does with all.
+  type Found = { address: string; family: number }[];
+  const at =
+    (...addresses: string[]) =>
+    (_name: string, _opts: unknown, cb: (e: Error | null, a?: Found) => void) =>
+      cb(null, addresses.map((address) => ({ address, family: address.includes(':') ? 6 : 4 })));
+  // A plain TCP server on 127.0.0.1 that does `then` with each connection.
+  async function tcp(then: (s: import('node:net').Socket) => void) {
+    const server = (await import('node:net')).createServer(then);
+    await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+    return { server, port: (server.address() as { port: number }).port };
+  }
 
   it("reaches the globe where its own leaf answers, and tells another snowglobe's apart", async () => {
     const { mine, other, leaf } = await two();
@@ -262,8 +272,35 @@ describe('nameReaches', () => {
     const a = await serve(mine);
     await new Promise((done) => a.server.close(done));
     expect(await nameReaches(D, { leaf, lookup: at('127.0.0.1'), port: a.port })).toEqual({ reached: false, why: 'unanswered', address: '127.0.0.1', code: 'ECONNREFUSED' });
-    const none = (_name: string, cb: (e: Error) => void) => cb(Object.assign(new Error('no address'), { code: 'ENOTFOUND' }));
+    const none = (_name: string, _opts: unknown, cb: (e: Error) => void) => cb(Object.assign(new Error('no address'), { code: 'ENOTFOUND' }));
     expect(await nameReaches(D, { leaf, lookup: none })).toEqual({ reached: false, why: 'unresolved', code: 'ENOTFOUND' });
+  });
+
+  it('counts anything that takes the connection without this leaf as another, not as nothing', async () => {
+    const { leaf } = await two();
+    // A plain http server on 443, something that closes every connection (as the name router does
+    // a name it does not route), and something that takes it and never speaks.
+    const http = await tcp((s) => s.end('HTTP/1.1 400 Bad Request\r\n\r\n'));
+    const closes = await tcp((s) => s.destroy());
+    const silent = await tcp(() => {});
+    try {
+      for (const { port } of [http, closes, silent])
+        expect(await nameReaches(D, { leaf, lookup: at('127.0.0.1'), port, timeout: 300 })).toMatchObject({ reached: false, why: 'another', address: '127.0.0.1' });
+    } finally {
+      for (const { server } of [http, closes, silent]) server.close();
+    }
+  });
+
+  it('tries every address the name has, as an app falling back does, and reports the first', async () => {
+    const { mine, leaf } = await two();
+    const a = await serve(mine);
+    try {
+      // Nothing on ::1 (or no IPv6 at all), the globe on 127.0.0.1.
+      expect(await nameReaches(D, { leaf, lookup: at('::1', '127.0.0.1'), port: a.port })).toEqual({ reached: true, address: '127.0.0.1' });
+      expect(await nameReaches(D, { leaf, lookup: at('127.0.0.2', '127.77.0.9'), port: a.port })).toMatchObject({ reached: false, why: 'unanswered', address: '127.0.0.2' });
+    } finally {
+      a.server.close();
+    }
   });
 
   it("looks the name up through the machine's own resolver by default, hosts file included", async () => {

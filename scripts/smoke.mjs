@@ -19,7 +19,8 @@
 // the name router reaches by name; the router is the machine's, shared with your own snowglobes.
 //
 // Needs Docker with compose and Node 20+. The steps that reach names need the name router, which
-// runs on Linux.
+// runs on Linux. Without it, nothing reaches the copy by name, so its up fails and no step after
+// it runs.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';

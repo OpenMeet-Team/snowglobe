@@ -9,7 +9,7 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync,
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 // @ts-expect-error: a plain .mjs module, without types
-import { accountPrefixes, endingClash, mergeRoutes, startedAfterRelay } from '../lib/up.mjs';
+import { accountPrefixes, bindFilesToRemove, endingClash, mergeRoutes, nameFinding, startedAfterRelay, tryName } from '../lib/up.mjs';
 
 const ROOT = join(__dirname, '..');
 const FOUR = join(ROOT, 'test/snowglobe/four.yml');
@@ -35,6 +35,45 @@ describe('what up writes', () => {
     // A rerun that changed nothing, a container that never started, a service with no container.
     expect(startedAfterRelay(relay, { 'pds-main': [before], nginx: [before] })).toBeNull();
     expect(startedAfterRelay(relay, { 'pds-main': ['0001-01-01T00:00:00Z'], nginx: [] })).toBeNull();
+  });
+});
+
+describe("what up does with the globe's own name", () => {
+  const no = (why: string, address?: string) => ({ reached: false, why, address, code: 'X' });
+
+  it('tries again until the name reaches the globe, at most three times', async () => {
+    const answers = [no('unanswered', '127.0.0.1'), no('unresolved'), { reached: true, address: '127.0.0.1' }];
+    let pauses = 0;
+    const reach = async () => answers.shift();
+    expect(await tryName(reach, { pause: async () => void pauses++ })).toEqual({ reached: true, address: '127.0.0.1' });
+    expect(pauses).toBe(2);
+    let calls = 0;
+    expect(await tryName(async () => (calls++, no('another', '127.0.0.1')), { pause: async () => {} })).toMatchObject({ why: 'another' });
+    expect(calls).toBe(3);
+    calls = 0;
+    await tryName(async () => (calls++, { reached: true, address: '127.0.0.1' }), { pause: async () => {} });
+    expect(calls).toBe(1);
+  });
+
+  it('tells the cases apart by router, answer and address', () => {
+    const f = (routed: boolean, res: object, bind = '127.0.0.3') => nameFinding({ bind, routed, res });
+    expect(f(false, { reached: true, address: '127.0.0.1' }, '127.0.0.1')).toBe('reached');
+    expect(f(true, { reached: true, address: '127.0.0.1' })).toBe('reached');
+    for (const routed of [true, false]) expect(f(routed, no('unresolved'))).toBe('unresolved');
+    expect(f(true, no('unanswered', '127.0.0.1'))).toBe('router-unanswered');
+    expect(f(true, no('another', '127.0.0.1'))).toBe('router-another');
+    expect(f(false, no('another', '127.0.0.1'))).toBe('another');
+    // The bug: up put the globe on 127.0.0.3 and nothing is on 127.0.0.1, where its name resolves.
+    expect(f(false, no('unanswered', '127.0.0.1'))).toBe('elsewhere');
+    expect(f(false, no('unanswered', '127.0.0.1'), '127.0.0.1')).toBe('unanswered');
+  });
+
+  it('removes bind files only where that puts the globe where its name reaches', () => {
+    const own = '/s/mine/bind';
+    const kept = ['/s/dead/bind'];
+    expect(bindFilesToRemove('elsewhere', { own, kept })).toEqual([own, ...kept]);
+    expect(bindFilesToRemove('router-unanswered', { own, kept })).toEqual([own]);
+    for (const finding of ['unresolved', 'router-another', 'another', 'unanswered']) expect(bindFilesToRemove(finding, { own, kept })).toEqual([]);
   });
 });
 
