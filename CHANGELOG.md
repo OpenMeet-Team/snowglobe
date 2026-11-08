@@ -2,7 +2,7 @@
 
 Changes to the default stack that existing setups will notice:
 
-## Unreleased
+## v0.7.0 (2026-11-08)
 
 - **`up` fails when the snowglobe's own name does not reach it.** Last, it looks the domain up the way
   an app on the machine does and connects there, and exits 1 unless the snowglobe itself answers,
