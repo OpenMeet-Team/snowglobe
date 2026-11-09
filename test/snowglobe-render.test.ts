@@ -382,6 +382,17 @@ describe('snowglobe render: group hosts', () => {
     }
   });
 
+  it('has the relay crawl each one after the PDSes, once it is healthy', () => {
+    const { compose } = render(GH);
+    const init = compose.services['relay-init'];
+    expect(init.environment.RELAY_HOSTS.split(' ')).toEqual([
+      ...GH.pds.map((p) => `${p.name}.mine.test`),
+      'gh.mine.test',
+      'gh2.mine.test',
+    ]);
+    expect(init.depends_on).toMatchObject({ 'grouphost-gh': { condition: 'service_healthy' }, 'grouphost-gh2': { condition: 'service_healthy' } });
+  });
+
   it('gives each one its nginx server, certificate names, page row, health and group list', () => {
     const { files, env } = render(GH);
     expect(files['nginx/globe.conf']).toContain('server_name gh.mine.test *.gh.mine.test;');

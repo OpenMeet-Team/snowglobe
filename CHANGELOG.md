@@ -2,6 +2,14 @@
 
 Changes to the default stack that existing setups will notice:
 
+## Unreleased
+
+- **The relay crawls every group host too.** `relay-init` added only the PDSes, so a group's writes
+  at its group host never reached the relay, Jetstream or anything indexing from them, and an app
+  that lists groups from Jetstream never saw one. Group hosts serve `subscribeRepos` like a PDS;
+  `relay-init` now waits for each to be healthy and crawls it after the PDSes, and the collection
+  directory crawls them too.
+
 ## v0.7.0 (2026-11-08)
 
 - **`up` fails when the snowglobe's own name does not reach it.** Last, it looks the domain up the way

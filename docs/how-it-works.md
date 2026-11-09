@@ -28,9 +28,10 @@
   its crawl refuses private addresses too, and one so its crawl reads its own rate limit, without
   which it stalls after the first page. Only that path reaches it; its admin API stays on the
   compose network. It reads the relay's firehose from its first start, and `relay-init` has it
-  crawl each PDS, so an account that wrote before it started is listed too. `relay-init` gives
-  every PDS to the relay first and never waits on `collectiondir`, so a directory that is down
-  leaves the relay, Jetstream and Tap as they were.
+  crawl each PDS and group host, so an account that wrote before it started is listed too.
+  `relay-init` gives every PDS and group host to the relay first and never waits on
+  `collectiondir`, so a directory that is down leaves the relay, Jetstream and Tap as they were.
+  A group host is crawled like a PDS: its groups' writes reach Jetstream only through the relay.
 - **Tap runs in the DNS container's network** (`tap-dns`), whose DNS answers every name under the
   domain with nginx. That is how Tap reaches an app's https name to send it events, and checks a
   handle (`alice.<domain>`) at its own name. Tap's port is published on the snowglobe's address, `SG_BIND`, at `<SG_TAP_PORT>` (2480)
