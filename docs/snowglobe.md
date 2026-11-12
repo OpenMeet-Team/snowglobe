@@ -180,13 +180,14 @@ one group host today, whatever its file lists.
 `https://<name>.<domain>`, with every group's handle under `<name>.<domain>`; nginx, the
 certificate and the network page (its health, and its groups under accounts) get each one, as they
 get each PDS. The one kind, `opensocial`, is
-atproto-group-host, which is not public yet and publishes no image,
+[atproto-group-host](https://github.com/tompscanlan/atproto-group-host), which publishes no image,
 so `up` builds it from a checkout with the repo's own Dockerfile, on every run (Docker's cache keeps
 an unchanged one quick). The checkout is the group host's `build` folder in the file, else
 `SG_OPENSOCIAL_BUILD` (a path from where you run the command), so a file shared between
 machines can leave it out:
 
 ```bash
+git clone https://github.com/tompscanlan/atproto-group-host ../atproto-group-host
 SG_OPENSOCIAL_BUILD=../atproto-group-host snowglobe up ../myapp/snowglobe.yml
 ```
 
