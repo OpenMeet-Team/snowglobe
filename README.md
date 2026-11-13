@@ -51,7 +51,7 @@ all carry those names, so your computer has to send the names to the snowglobe, 
 certificate. Here is what to do.
 
 **Before you start it:** install Docker with Compose, and Node 20 or newer. Use Linux, or Windows with
-WSL 2.
+WSL 2. A user has also run it on a Mac with Docker Desktop ([Platforms](#platforms)).
 
 **After it is up, to open it in a browser or reach it from an app:**
 
@@ -119,7 +119,9 @@ To run your own app inside of a snowglobe, see [Your app in a snowglobe](docs/yo
 
 ## Platforms
 
-Snowglobe runs on Linux, and on Windows under WSL 2. Both are tested. macOS is not supported yet.
+Snowglobe runs on Linux, and on Windows under WSL 2. Both are tested. On macOS, a user has run 0.6.0
+on an Apple Silicon Mac with Docker Desktop and Node 24 ([#51](https://github.com/OpenMeet-Team/snowglobe/issues/51)). The browser tests in that run
+trusted the snowglobe's CA in their own process; `snowglobe trust` has not been tried on a Mac yet.
 If you try it on a Mac, please
 [open an issue](https://github.com/OpenMeet-Team/snowglobe/issues) with what broke, or that it
 worked.

@@ -7,7 +7,8 @@ brings it up; with no file named, it uses the `snowglobe.yml` in this folder or 
 built for the real network runs against it with no test-only code.
 
 It runs on Linux, and on Windows under WSL 2; both are tested with `node scripts/smoke.mjs`
-([Test suite](testing.md#test-suite)). macOS is not supported yet. If you have a Mac, please try it
+([Test suite](testing.md#test-suite)). A user has run it on a Mac with Docker Desktop ([#51](https://github.com/OpenMeet-Team/snowglobe/issues/51)), but
+`snowglobe trust` has not been tried on a Mac yet. If you have a Mac, please try it
 and [open an issue](https://github.com/OpenMeet-Team/snowglobe/issues) with what broke, or that it
 worked.
 
