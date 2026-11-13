@@ -50,7 +50,7 @@ too.
 
 ## An example: a status app that signs in with OAuth
 
-A web app, `myapp`, lets people sign in with their atproto account and post a status. You run it
+A web app, `web`, lets people sign in with their atproto account and post a status. You run it
 with `npm run dev` on port 5173. It reads two settings that say which servers to use: the PLC
 address (`PUBLIC_ATPROTO_PLC_URL`) and the PDS people sign up on (`PUBLIC_ATPROTO_SIGNUP_PDS`). On
 the real network they are Bluesky's. In a snowglobe they must be the snowglobe's. The steps below
@@ -64,12 +64,12 @@ use the pieces described further down.
    ```
 
 2. **Describe the snowglobe the app needs.** Put a `snowglobe.yml` in the app's repo. It can start as a
-   copy of the package's `snowglobe.default.yml` (in the checkout, or under `npm root -g`) with a new `globe:` name (two files cannot share one), the app added, and the settings it reads:
+   copy of the package's `snowglobe.default.yml` (in the checkout, or under `npm root -g`) with a new `globe:` name (`myapp` here; two files cannot share one), the app added, and the settings it reads:
 
    ```yaml
    apps:
-     - name: myapp
-       local: { port: 5173 }          # https://myapp.app.<domain> -> your dev server
+     - name: web
+       local: { port: 5173 }          # https://web.app.<domain> -> your dev server
        env:                           # the settings your app reads, and what to put in them
          PUBLIC_ATPROTO_PLC_URL: ${services.plc.url}
          PUBLIC_ATPROTO_SIGNUP_PDS: ${pds.main.url}
@@ -87,11 +87,12 @@ use the pieces described further down.
    snowglobe run npm run dev
    ```
 
-5. **Sign in as alice.** Open `https://myapp.app.myapp.local.snowglobe.at` in a browser that trusts
+5. **Sign in as alice.** An app's address is its name, then `app`, then the snowglobe's domain. Open
+   `https://web.app.myapp.local.snowglobe.at` in a browser that trusts
    the snowglobe's CA. Sign in as `alice.myapp.local.snowglobe.at`. Her password is in
    `<state>/accounts.env` (`ALICE_PASSWORD`).
 
-What happens at sign-in: the app's OAuth `client_id` is a URL on `myapp.app.myapp.local.snowglobe.at`. The
+What happens at sign-in: the app's OAuth `client_id` is a URL on `web.app.myapp.local.snowglobe.at`. The
 PDS, which runs in Docker, fetches the app's client metadata from that URL over https. That works
 because step 2 routed the name to your dev server. The PDS then shows its sign-in and consent pages
 at `https://main.myapp.local.snowglobe.at`, and sends the browser back to the app. Each piece is in
@@ -130,7 +131,7 @@ none.
 
 ```yaml
 apps:
-  - name: myapp
+  - name: web
     local: { port: 5173 }
     env:
       PUBLIC_ATPROTO_PLC_URL: ${services.plc.url}
@@ -255,7 +256,7 @@ app on `localhost:5173`:
 - **Servers in the snowglobe can call your app.** A route also reaches your app from inside Docker,
   through `host.docker.internal`.
 - **The name works on the machine too**, so your app's own server code and tests can call
-  `https://myapp.app.<domain>`, under `snowglobe run` for the CA.
+  `https://web.app.<domain>`, under `snowglobe run` for the CA.
 
 Without the route, the PDS cannot read the app's client metadata, so sign-in cannot start.
 
@@ -267,7 +268,7 @@ Without the route, the PDS cannot read the app's client metadata, so sign-in can
 | `snowglobe app --render` | only writes nginx's routes and the network page from `<state>/https/apps`, as `up` does before it starts |
 
 ```bash
-snowglobe app myapp 5173     # https://myapp.app.<domain> -> port 5173 on this machine
+snowglobe app web 5173       # https://web.app.<domain> -> port 5173 on this machine
 ```
 
 You can also put it in `snowglobe.yml` with `apps[].local`, as in the example above, and `up` makes the
